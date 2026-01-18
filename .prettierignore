@@ -1,0 +1,22 @@
+# Папки
+node_modules/
+.expo/
+dist/
+build/
+coverage/
+ios/
+android/
+assets/
+
+# Файлы
+*.log
+*.lock
+.env*
+!.env.example
+
+# Конфигурации
+package-lock.json
+yarn.lock
+
+# Другое
+.DS_Store
