@@ -7,12 +7,12 @@ import {
   TouchableOpacity,
   ScrollView,
   Image,
+  SafeAreaView,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native'; // Добавь этот импорт
+import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 
 import { colors, spacing, borderRadius, typography } from '../theme/colors';
-import Header from '../components/Header';
 
 // --------------------
 // Типы
@@ -43,7 +43,7 @@ interface SearchScreenProps {
 }
 
 export default function SearchScreen(props: SearchScreenProps) {
-  const navigation = useNavigation(); // Добавь хук навигации
+  const navigation = useNavigation();
 
   // --------------------
   // Мок-данные мероприятий
@@ -162,11 +162,11 @@ export default function SearchScreen(props: SearchScreenProps) {
   // Обработчики навигации
   // --------------------
   const handleBackPress = () => {
-    navigation.goBack(); // Используй навигацию
+    navigation.goBack();
   };
 
   const handleProfilePress = () => {
-    // Используй ту же логику, что и в HomeScreen
+    // Вместо отдельной кнопки профиля используем стандартную навигацию
     navigation.navigate('MainTabs' as never, { screen: 'Profile' } as never);
   };
 
@@ -350,18 +350,25 @@ export default function SearchScreen(props: SearchScreenProps) {
   // Рендер
   // --------------------
   return (
-    <View style={styles.fullContainer}>
-      <Header
-        showBack={true}
-        onBackPress={handleBackPress}
-        title="Поиск"
-        showSearch={false}
-        onProfilePress={handleProfilePress}
-      />
+    <SafeAreaView style={styles.fullContainer} edges={['top']}>
+      {/* Шапка как в CommunitiesScreen и ProfileScreen */}
+      <View style={styles.header}>
+        <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
+          <Ionicons name="arrow-back" size={24} color={colors.light.foreground} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Поиск</Text>
+        <TouchableOpacity style={styles.profileButton} onPress={handleProfilePress}>
+          <Ionicons name="person-outline" size={22} color={colors.light.foreground} />
+        </TouchableOpacity>
+      </View>
 
-      <View style={styles.container}>
+      <ScrollView
+        style={styles.container}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
         {/* Search header */}
-        <View style={styles.header}>
+        <View style={styles.searchHeader}>
           <View style={styles.searchContainer}>
             <Ionicons name="search" size={18} color={colors.light.mutedForeground} />
 
@@ -388,141 +395,125 @@ export default function SearchScreen(props: SearchScreenProps) {
           </View>
         </View>
 
-        <ScrollView showsVerticalScrollIndicator={false}>
-          {showSearchResults ? (
-            // --------------------
-            // Результаты поиска
-            // --------------------
-            <View style={styles.resultsSection}>
-              <Text style={styles.sectionTitle}>
-                Найдено {filteredEvents.length} мероприятий по запросу "{searchValue}"
-              </Text>
-              <View style={styles.resultsList}>
-                {filteredEvents.map(renderEventItem)}
+        {showSearchResults ? (
+          // --------------------
+          // Результаты поиска
+          // --------------------
+          <View style={styles.resultsSection}>
+            <Text style={styles.sectionTitle}>
+              Найдено {filteredEvents.length} мероприятий по запросу "{searchValue}"
+            </Text>
+            <View style={styles.resultsList}>{filteredEvents.map(renderEventItem)}</View>
+          </View>
+        ) : (
+          // --------------------
+          // Контент по умолчанию
+          // --------------------
+          <>
+            {/* Recent searches */}
+            {recentSearches.length > 0 ? (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Недавние запросы</Text>
+
+                <View style={styles.recentList}>
+                  {recentSearches.map(function (search, index) {
+                    return (
+                      <TouchableOpacity
+                        key={index}
+                        style={styles.recentItem}
+                        onPress={() => handleRecentSearchPress(search)}
+                      >
+                        <Ionicons
+                          name="time-outline"
+                          size={16}
+                          color={colors.light.mutedForeground}
+                        />
+                        <Text style={styles.recentText}>{search}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+            ) : null}
+
+            {/* Popular tags */}
+            {popularTags.length > 0 ? (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Популярные теги</Text>
+
+                <View style={styles.tagsContainer}>
+                  {popularTags.map(function (tag, index) {
+                    return (
+                      <TouchableOpacity
+                        key={index}
+                        style={styles.tag}
+                        onPress={() => handleTagPress(tag)}
+                      >
+                        <Text style={styles.tagText}>{tag}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+            ) : null}
+
+            {/* Quick filters */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Быстрые фильтры</Text>
+
+              <View style={styles.quickFilters}>
+                <TouchableOpacity
+                  style={styles.quickFilter}
+                  onPress={() => handleQuickFilter('popular')}
+                >
+                  <Ionicons name="flame-outline" size={20} color={colors.light.primary} />
+                  <Text style={styles.quickFilterText}>Популярное</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.quickFilter}
+                  onPress={() => handleQuickFilter('today')}
+                >
+                  <Ionicons name="today-outline" size={20} color={colors.light.primary} />
+                  <Text style={styles.quickFilterText}>Сегодня</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.quickFilter}
+                  onPress={() => handleQuickFilter('free')}
+                >
+                  <Ionicons name="gift-outline" size={20} color={colors.light.primary} />
+                  <Text style={styles.quickFilterText}>Бесплатно</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.quickFilter}
+                  onPress={() => handleQuickFilter('nearby')}
+                >
+                  <Ionicons
+                    name="location-outline"
+                    size={20}
+                    color={colors.light.primary}
+                  />
+                  <Text style={styles.quickFilterText}>Рядом</Text>
+                </TouchableOpacity>
               </View>
             </View>
-          ) : (
-            // --------------------
-            // Контент по умолчанию
-            // --------------------
-            <>
-              {/* Recent searches */}
-              {recentSearches.length > 0 ? (
-                <View style={styles.section}>
-                  <Text style={styles.sectionTitle}>Недавние запросы</Text>
 
-                  <View style={styles.recentList}>
-                    {recentSearches.map(function (search, index) {
-                      return (
-                        <TouchableOpacity
-                          key={index}
-                          style={styles.recentItem}
-                          onPress={() => handleRecentSearchPress(search)}
-                        >
-                          <Ionicons
-                            name="time-outline"
-                            size={16}
-                            color={colors.light.mutedForeground}
-                          />
-                          <Text style={styles.recentText}>{search}</Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
-                </View>
-              ) : null}
-
-              {/* Popular tags */}
-              {popularTags.length > 0 ? (
-                <View style={styles.section}>
-                  <Text style={styles.sectionTitle}>Популярные теги</Text>
-
-                  <View style={styles.tagsContainer}>
-                    {popularTags.map(function (tag, index) {
-                      return (
-                        <TouchableOpacity
-                          key={index}
-                          style={styles.tag}
-                          onPress={() => handleTagPress(tag)}
-                        >
-                          <Text style={styles.tagText}>{tag}</Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
-                </View>
-              ) : null}
-
-              {/* Quick filters */}
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Быстрые фильтры</Text>
-
-                <View style={styles.quickFilters}>
-                  <TouchableOpacity
-                    style={styles.quickFilter}
-                    onPress={() => handleQuickFilter('popular')}
-                  >
-                    <Ionicons
-                      name="flame-outline"
-                      size={20}
-                      color={colors.light.primary}
-                    />
-                    <Text style={styles.quickFilterText}>Популярное</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={styles.quickFilter}
-                    onPress={() => handleQuickFilter('today')}
-                  >
-                    <Ionicons
-                      name="today-outline"
-                      size={20}
-                      color={colors.light.primary}
-                    />
-                    <Text style={styles.quickFilterText}>Сегодня</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={styles.quickFilter}
-                    onPress={() => handleQuickFilter('free')}
-                  >
-                    <Ionicons
-                      name="gift-outline"
-                      size={20}
-                      color={colors.light.primary}
-                    />
-                    <Text style={styles.quickFilterText}>Бесплатно</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={styles.quickFilter}
-                    onPress={() => handleQuickFilter('nearby')}
-                  >
-                    <Ionicons
-                      name="location-outline"
-                      size={20}
-                      color={colors.light.primary}
-                    />
-                    <Text style={styles.quickFilterText}>Рядом</Text>
-                  </TouchableOpacity>
-                </View>
+            {/* Popular events */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Популярные сейчас</Text>
+              <View style={styles.resultsList}>
+                {mockEvents
+                  .sort((a, b) => b.views - a.views)
+                  .slice(0, 3)
+                  .map(renderEventItem)}
               </View>
-
-              {/* Popular events */}
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Популярные сейчас</Text>
-                <View style={styles.resultsList}>
-                  {mockEvents
-                    .sort((a, b) => b.views - a.views)
-                    .slice(0, 3)
-                    .map(renderEventItem)}
-                </View>
-              </View>
-            </>
-          )}
-        </ScrollView>
-      </View>
-    </View>
+            </View>
+          </>
+        )}
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
@@ -537,7 +528,32 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  scrollContent: {
+    paddingBottom: spacing['2xl'],
+  },
+  // Шапка как в CommunitiesScreen и ProfileScreen
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.light.border,
+  },
+  backButton: {
+    padding: spacing.xs,
+  },
+  headerTitle: {
+    fontSize: typography.xl,
+    fontWeight: '700',
+    color: colors.light.foreground,
+    textAlign: 'center',
+  },
+  profileButton: {
+    padding: spacing.xs,
+  },
+  searchHeader: {
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
     borderBottomWidth: 1,

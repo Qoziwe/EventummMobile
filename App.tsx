@@ -11,13 +11,18 @@ import EventDetailScreen from './screens/EventDetailScreen';
 import ProfileScreen from './screens/ProfileScreen';
 import CommunitiesScreen from './screens/CommunitiesScreen';
 import SearchScreen from './screens/SearchScreen';
+import SettingsScreen from './screens/SettingsScreen';
+import PostThreadScreen from './screens/PostThreadScreen'; // Добавляем импорт
 
-// Icons component (you'll need react-native-vector-icons or expo/vector-icons)
+// Icons component
 import { Ionicons } from '@expo/vector-icons';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
+// --------------------
+// Компонент TabNavigator
+// --------------------
 function TabNavigator() {
   return (
     <Tab.Navigator
@@ -60,13 +65,136 @@ function TabNavigator() {
       />
       <Tab.Screen
         name="Profile"
-        component={ProfileScreen}
+        component={ProfileStackScreen}
         options={{ title: 'Профиль' }}
       />
     </Tab.Navigator>
   );
 }
 
+// --------------------
+// Стек для экрана профиля с настройками
+// --------------------
+function ProfileStackScreen() {
+  return (
+    <Stack.Navigator>
+      <Stack.Screen
+        name="ProfileMain"
+        component={ProfileScreenWrapper}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="Settings"
+        component={SettingsScreen}
+        options={{
+          title: 'Настройки',
+          headerBackTitle: 'Назад',
+        }}
+      />
+    </Stack.Navigator>
+  );
+}
+
+// --------------------
+// Обертка для ProfileScreen с передачей обработчиков
+// --------------------
+function ProfileScreenWrapper({ navigation }: any) {
+  // --------------------
+  // Обработчики для ProfileScreen
+  // --------------------
+  function openSettings() {
+    navigation.navigate('Settings');
+  }
+
+  function handleSectionPress(sectionId: string) {
+    if (sectionId === 'settings') {
+      openSettings();
+    }
+    // Можно добавить обработку других секций здесь
+  }
+
+  function editProfile() {
+    console.log('Редактирование профиля');
+  }
+
+  function becomeOrganizer() {
+    console.log('Стать организатором');
+  }
+
+  function exploreEvents() {
+    console.log('Поиск мероприятий');
+  }
+
+  function handleTabChange(tab: 'tickets' | 'favorites') {
+    console.log('Смена таба на:', tab);
+  }
+
+  // --------------------
+  // Данные для профиля
+  // --------------------
+  const userData = {
+    avatarInitials: 'AJ',
+    name: 'Alex Johnson',
+    email: 'alex@example.com',
+    role: 'Пользователь',
+    subscriptionType: 'Premium',
+    bio: 'Music lover, tech enthusiast, always looking for the next great event.',
+    eventsAttended: 24,
+    eventsSaved: 12,
+    communitiesJoined: 5,
+    hasTickets: false,
+  };
+
+  // --------------------
+  // Рендер ProfileScreen
+  // --------------------
+  return (
+    <ProfileScreen
+      avatarInitials={userData.avatarInitials}
+      name={userData.name}
+      email={userData.email}
+      role={userData.role}
+      subscriptionType={userData.subscriptionType}
+      bio={userData.bio}
+      eventsAttended={userData.eventsAttended}
+      eventsSaved={userData.eventsSaved}
+      communitiesJoined={userData.communitiesJoined}
+      onSettings={openSettings}
+      onEdit={editProfile}
+      onBecomeOrganizer={becomeOrganizer}
+      onExplore={exploreEvents}
+      onSectionPress={handleSectionPress}
+      onTabChange={handleTabChange}
+      hasTickets={userData.hasTickets}
+    />
+  );
+}
+
+// --------------------
+// Обертка для PostThreadScreen
+// --------------------
+function PostThreadScreenWrapper({ navigation, route }: any) {
+  function handleBack() {
+    navigation.goBack();
+  }
+
+  function handleSubmitComment(content: string, hasMedia: boolean, hasLink: boolean) {
+    console.log('Новый комментарий:', content);
+    // Логика отправки комментария на сервер
+  }
+
+  return (
+    <PostThreadScreen
+      postId={route.params?.postId}
+      onBack={handleBack}
+      onSubmitComment={handleSubmitComment}
+    />
+  );
+}
+
+// --------------------
+// Основной компонент App
+// --------------------
 export default function App() {
   return (
     <SafeAreaProvider>
@@ -76,6 +204,14 @@ export default function App() {
           <Stack.Screen name="MainTabs" component={TabNavigator} />
           <Stack.Screen name="AllEvents" component={AllEventsScreen} />
           <Stack.Screen name="EventDetail" component={EventDetailScreen} />
+          <Stack.Screen
+            name="PostThread"
+            component={PostThreadScreenWrapper}
+            options={{
+              headerShown: false,
+              title: 'Обсуждение',
+            }}
+          />
         </Stack.Navigator>
       </NavigationContainer>
     </SafeAreaProvider>

@@ -1,7 +1,8 @@
-import { ScrollView, StyleSheet } from 'react-native';
+import { ScrollView, StyleSheet, View, Text, TouchableOpacity } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 
-import { colors } from '../theme/colors';
+import { colors, spacing, borderRadius, typography } from '../theme/colors';
 
 import Header from '../components/Header';
 import HeroSection from '../components/HeroSection';
@@ -13,7 +14,7 @@ import Footer from '../components/Footer';
 import EventCard from '../components/EventCard';
 
 // Для NextWeekFeed нужен require для изображений или заменим на placeholder
-const placeholderImage = require('../assets/placeholder.jpg'); // Создайте этот файл или используйте другой
+const placeholderImage = require('../assets/placeholder.jpg');
 
 export default function HomeScreen() {
   const navigation = useNavigation();
@@ -53,6 +54,7 @@ export default function HomeScreen() {
       imageUri: 'https://via.placeholder.com/150',
     },
   ];
+
   // --------------------
   // Данные для блока "Для вас"
   // --------------------
@@ -78,6 +80,7 @@ export default function HomeScreen() {
       imageUri: 'https://via.placeholder.com/150',
     },
   ];
+
   // --------------------
   // Данные для блока "Следующая неделя"
   // --------------------
@@ -85,7 +88,7 @@ export default function HomeScreen() {
     {
       id: '6',
       title: 'Фестиваль еды в городском парке',
-      image: placeholderImage, // Требуется require или импорт локального изображения
+      image: placeholderImage,
       date: '28 фев, 12:00',
       location: 'Парк "Городской"',
       price: 'Бесплатно',
@@ -123,6 +126,40 @@ export default function HomeScreen() {
       isPromoted: false,
     },
   ];
+
+  // --------------------
+  // Данные для обсуждений
+  // --------------------
+  const popularDiscussions = [
+    {
+      id: 'd1',
+      title: 'Какой ваш любимый музыкальный фестиваль в этом году?',
+      author: 'MusicLover',
+      timestamp: '2 часа назад',
+      replies: 45,
+      upvotes: 128,
+      category: 'Музыка',
+    },
+    {
+      id: 'd2',
+      title: 'Советы для фотографов-новичков на мероприятиях',
+      author: 'PhotoPro',
+      timestamp: '5 часов назад',
+      replies: 23,
+      upvotes: 89,
+      category: 'Фотография',
+    },
+    {
+      id: 'd3',
+      title: 'Какие технологические тренды будут на конференциях в 2024?',
+      author: 'TechGuru',
+      timestamp: '1 день назад',
+      replies: 67,
+      upvotes: 156,
+      category: 'Технологии',
+    },
+  ];
+
   // --------------------
   // Обработчики навигации
   // --------------------
@@ -143,6 +180,14 @@ export default function HomeScreen() {
   }
 
   function openCommunities() {
+    navigation.navigate('MainTabs' as never, { screen: 'Communities' } as never);
+  }
+
+  function openDiscussion(discussionId: string) {
+    navigation.navigate('PostThread' as never, { postId: discussionId } as never);
+  }
+
+  function openAllDiscussions() {
     navigation.navigate('MainTabs' as never, { screen: 'Communities' } as never);
   }
 
@@ -196,6 +241,57 @@ export default function HomeScreen() {
   });
 
   // --------------------
+  // Карточки обсуждений
+  // --------------------
+  const discussionCards = popularDiscussions.map(function (discussion) {
+    return (
+      <TouchableOpacity
+        key={discussion.id}
+        style={discussionStyles.card}
+        onPress={() => openDiscussion(discussion.id)}
+      >
+        <View style={discussionStyles.header}>
+          <Text style={discussionStyles.category}>{discussion.category}</Text>
+          <Text style={discussionStyles.timestamp}>{discussion.timestamp}</Text>
+        </View>
+
+        <Text style={discussionStyles.title}>{discussion.title}</Text>
+
+        <View style={discussionStyles.footer}>
+          <View style={discussionStyles.authorContainer}>
+            <Ionicons
+              name="person-circle-outline"
+              size={16}
+              color={colors.light.mutedForeground}
+            />
+            <Text style={discussionStyles.author}>{discussion.author}</Text>
+          </View>
+
+          <View style={discussionStyles.statsContainer}>
+            <View style={discussionStyles.stat}>
+              <Ionicons
+                name="chatbubble-outline"
+                size={14}
+                color={colors.light.mutedForeground}
+              />
+              <Text style={discussionStyles.statText}>{discussion.replies}</Text>
+            </View>
+
+            <View style={discussionStyles.stat}>
+              <Ionicons
+                name="arrow-up-outline"
+                size={14}
+                color={colors.light.mutedForeground}
+              />
+              <Text style={discussionStyles.statText}>{discussion.upvotes}</Text>
+            </View>
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
+  });
+
+  // --------------------
   // Рендер экрана
   // --------------------
   return (
@@ -219,6 +315,18 @@ export default function HomeScreen() {
 
         <EventsGrid onViewAll={openAllEvents}>{popularEventCards}</EventsGrid>
 
+        {/* Секция обсуждений */}
+        <View style={discussionSectionStyles.container}>
+          <View style={discussionSectionStyles.header}>
+            <Text style={discussionSectionStyles.title}>Популярные обсуждения</Text>
+            <TouchableOpacity onPress={openAllDiscussions}>
+              <Text style={discussionSectionStyles.viewAll}>Смотреть все</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={discussionSectionStyles.cardsContainer}>{discussionCards}</View>
+        </View>
+
         <CommunityPulse onViewAll={openCommunities} />
 
         <Footer />
@@ -234,5 +342,103 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.light.background,
+  },
+});
+
+// --------------------
+// Стили секции обсуждений
+// --------------------
+const discussionSectionStyles = StyleSheet.create({
+  container: {
+    backgroundColor: colors.light.background,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.xl,
+    marginTop: spacing.md,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.lg,
+  },
+  title: {
+    fontSize: typography.xl,
+    fontWeight: '700',
+    color: colors.light.foreground,
+  },
+  viewAll: {
+    fontSize: typography.sm,
+    color: colors.light.primary,
+    fontWeight: '500',
+  },
+  cardsContainer: {
+    gap: spacing.md,
+  },
+});
+
+// --------------------
+// Стили карточек обсуждений
+// --------------------
+const discussionStyles = StyleSheet.create({
+  card: {
+    backgroundColor: colors.light.card,
+    padding: spacing.lg,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    borderColor: colors.light.border,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  category: {
+    fontSize: typography.xs,
+    fontWeight: '600',
+    color: colors.light.primary,
+    backgroundColor: colors.light.secondary,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.sm,
+  },
+  timestamp: {
+    fontSize: typography.xs,
+    color: colors.light.mutedForeground,
+  },
+  title: {
+    fontSize: typography.base,
+    fontWeight: '600',
+    color: colors.light.foreground,
+    marginBottom: spacing.md,
+    lineHeight: 20,
+  },
+  footer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  authorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  author: {
+    fontSize: typography.sm,
+    color: colors.light.mutedForeground,
+  },
+  statsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  stat: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  statText: {
+    fontSize: typography.sm,
+    color: colors.light.mutedForeground,
   },
 });
