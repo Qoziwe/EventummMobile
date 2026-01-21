@@ -31,6 +31,7 @@ interface ProfileScreenProps {
   email?: string;
   role?: string;
   subscriptionType?: string;
+  subscriptionStatus?: 'free' | 'premium' | 'pro';
   interests?: InterestItem[];
   stats?: StatItem[];
   activeTab?: 'tickets' | 'favorites';
@@ -45,12 +46,13 @@ interface ProfileScreenProps {
   onBecomeOrganizer?: () => void;
   onExplore?: () => void;
   onSectionPress?: (sectionId: string) => void;
+  onSubscriptionPress?: () => void;
   hasTickets?: boolean;
   children?: React.ReactNode;
 }
 
 // --------------------
-// Компоненты
+// Компоненты (оригинальные)
 // --------------------
 
 interface ProfileHeaderProps {
@@ -59,8 +61,10 @@ interface ProfileHeaderProps {
   email: string;
   role: string;
   subscriptionType: string;
+  subscriptionStatus?: 'free' | 'premium' | 'pro';
   bio?: string;
   onEdit: () => void;
+  onSubscriptionPress?: () => void;
 }
 
 function ProfileHeader({
@@ -69,10 +73,13 @@ function ProfileHeader({
   email,
   role,
   subscriptionType,
+  subscriptionStatus,
   bio,
   onEdit,
+  onSubscriptionPress,
 }: ProfileHeaderProps) {
   const showSubscription = subscriptionType !== '';
+  const showSubscriptionBadge = subscriptionStatus && subscriptionStatus !== 'free';
 
   return (
     <View style={styles.profileSection}>
@@ -90,6 +97,16 @@ function ProfileHeader({
             <View style={styles.subscriptionBadge}>
               <Text style={styles.subscriptionText}>{subscriptionType}</Text>
             </View>
+          )}
+
+          {showSubscriptionBadge && (
+            <TouchableOpacity onPress={onSubscriptionPress}>
+              <View style={[styles.subscriptionBadge, styles.premiumBadge]}>
+                <Text style={styles.premiumText}>
+                  {subscriptionStatus === 'premium' ? 'PREMIUM' : 'PRO'}
+                </Text>
+              </View>
+            </TouchableOpacity>
           )}
         </View>
 
@@ -207,22 +224,25 @@ export default function ProfileScreen(props: ProfileScreenProps) {
   // --------------------
   // Пропсы с дефолтами
   // --------------------
-  const avatarInitials = props.avatarInitials || '';
-  const name = props.name || '';
-  const email = props.email || '';
-  const role = props.role || '';
+  const avatarInitials = props.avatarInitials || 'AJ';
+  const name = props.name || 'Alex Johnson';
+  const email = props.email || 'alex@example.com';
+  const role = props.role || 'Пользователь';
   const subscriptionType = props.subscriptionType || '';
-  const bio = props.bio || '';
+  const subscriptionStatus = props.subscriptionStatus || 'free';
+  const bio =
+    props.bio || 'Music lover, tech enthusiast, always looking for the next great event.';
   const interests = props.interests || [];
   const stats = props.stats || [];
   const activeTab = props.activeTab || 'tickets';
   const hasTickets = props.hasTickets || false;
 
-  const eventsAttended = props.eventsAttended || 0;
-  const eventsSaved = props.eventsSaved || 0;
-  const communitiesJoined = props.communitiesJoined || 0;
+  const eventsAttended = props.eventsAttended || 24;
+  const eventsSaved = props.eventsSaved || 12;
+  const communitiesJoined = props.communitiesJoined || 5;
 
   const profileSections = props.profileSections || [
+    { id: 'subscriptions', title: 'Подписки', icon: '👑' },
     { id: 'saved_events', title: 'Saved Events', icon: '🎫' },
     { id: 'my_communities', title: 'My Communities', icon: '👥' },
     { id: 'my_posts', title: 'My Posts & Comments', icon: '💬' },
@@ -277,6 +297,14 @@ export default function ProfileScreen(props: ProfileScreenProps) {
   function handleSectionPress(sectionId: string) {
     if (props.onSectionPress) {
       props.onSectionPress(sectionId);
+    }
+  }
+
+  function handleSubscriptionPress() {
+    if (props.onSubscriptionPress) {
+      props.onSubscriptionPress();
+    } else {
+      handleSectionPress('subscriptions');
     }
   }
 
@@ -399,8 +427,10 @@ export default function ProfileScreen(props: ProfileScreenProps) {
           email={email}
           role={role}
           subscriptionType={subscriptionType}
+          subscriptionStatus={subscriptionStatus}
           bio={bio}
           onEdit={editProfile}
+          onSubscriptionPress={handleSubscriptionPress}
         />
 
         {/* Статистика */}
@@ -529,6 +559,8 @@ const styles = StyleSheet.create({
   nameRow: {
     flexDirection: 'row',
     gap: spacing.sm,
+    alignItems: 'center',
+    flexWrap: 'wrap',
   },
   name: {
     fontSize: typography.xl,
@@ -538,12 +570,24 @@ const styles = StyleSheet.create({
   subscriptionBadge: {
     backgroundColor: `${colors.categories.music}33`,
     paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: borderRadius.md,
+  },
+  premiumBadge: {
+    backgroundColor: colors.light.primary,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
     borderRadius: borderRadius.md,
   },
   subscriptionText: {
     fontSize: 10,
     fontWeight: '600',
     color: colors.categories.music,
+  },
+  premiumText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: colors.light.primaryForeground,
   },
   email: {
     fontSize: typography.sm,
@@ -559,6 +603,7 @@ const styles = StyleSheet.create({
     fontSize: typography.sm,
     color: colors.light.mutedForeground,
     marginTop: spacing.sm,
+    lineHeight: 18,
   },
   editButton: {
     flexDirection: 'row',
@@ -570,6 +615,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     height: 36,
     alignSelf: 'flex-start',
+    alignItems: 'center',
   },
   editButtonText: {
     fontSize: typography.sm,
@@ -579,6 +625,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     marginTop: spacing.lg,
     marginBottom: spacing.lg,
+  },
+  sectionTitle: {
+    fontSize: typography.lg,
+    fontWeight: '600',
+    color: colors.light.foreground,
+    marginBottom: spacing.sm,
   },
   interestsContainer: {
     flexDirection: 'row',
@@ -619,6 +671,7 @@ const styles = StyleSheet.create({
   statLabel: {
     fontSize: typography.xs,
     color: colors.light.mutedForeground,
+    marginTop: 2,
   },
   creatorCard: {
     margin: spacing.lg,
@@ -630,6 +683,7 @@ const styles = StyleSheet.create({
   creatorContent: {
     flexDirection: 'row',
     gap: spacing.md,
+    alignItems: 'center',
   },
   creatorIcon: {
     width: 40,
@@ -651,6 +705,7 @@ const styles = StyleSheet.create({
     fontSize: typography.sm,
     color: colors.light.mutedForeground,
     marginTop: 2,
+    lineHeight: 18,
   },
   creatorButton: {
     flexDirection: 'row',
@@ -659,6 +714,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.light.primary,
     paddingVertical: spacing.md,
     borderRadius: borderRadius.lg,
+    alignItems: 'center',
   },
   creatorButtonText: {
     fontSize: typography.base,
@@ -701,6 +757,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: spacing.md,
     alignItems: 'center',
+    borderRadius: borderRadius.md,
   },
   tabActive: {
     backgroundColor: colors.light.secondary,
@@ -708,9 +765,11 @@ const styles = StyleSheet.create({
   tabText: {
     fontSize: typography.sm,
     color: colors.light.mutedForeground,
+    fontWeight: '500',
   },
   tabTextActive: {
     color: colors.light.foreground,
+    fontWeight: '600',
   },
   emptyState: {
     alignItems: 'center',
@@ -730,11 +789,13 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: spacing.sm,
     color: colors.light.foreground,
+    textAlign: 'center',
   },
   emptyDescription: {
     fontSize: typography.sm,
     color: colors.light.mutedForeground,
     marginBottom: spacing.lg,
+    textAlign: 'center',
   },
   exploreButton: {
     flexDirection: 'row',
@@ -743,6 +804,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.md,
     borderRadius: borderRadius.lg,
+    alignItems: 'center',
   },
   exploreButtonText: {
     fontSize: typography.base,

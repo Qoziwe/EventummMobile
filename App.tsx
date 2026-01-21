@@ -12,7 +12,8 @@ import ProfileScreen from './screens/ProfileScreen';
 import CommunitiesScreen from './screens/CommunitiesScreen';
 import SearchScreen from './screens/SearchScreen';
 import SettingsScreen from './screens/SettingsScreen';
-import PostThreadScreen from './screens/PostThreadScreen'; // Добавляем импорт
+import PostThreadScreen from './screens/PostThreadScreen';
+import { SubscriptionsScreen } from './screens/SubscriptionScreen';
 
 // Icons component
 import { Ionicons } from '@expo/vector-icons';
@@ -91,6 +92,14 @@ function ProfileStackScreen() {
           headerBackTitle: 'Назад',
         }}
       />
+      <Stack.Screen
+        name="Subscriptions"
+        component={SubscriptionsScreen}
+        options={{
+          title: 'Подписки',
+          headerBackTitle: 'Назад',
+        }}
+      />
     </Stack.Navigator>
   );
 }
@@ -107,10 +116,29 @@ function ProfileScreenWrapper({ navigation }: any) {
   }
 
   function handleSectionPress(sectionId: string) {
-    if (sectionId === 'settings') {
-      openSettings();
+    switch (sectionId) {
+      case 'settings':
+        openSettings();
+        break;
+      case 'subscriptions':
+        openSubscriptions();
+        break;
+      case 'saved_events':
+        console.log('Открыть сохраненные события');
+        break;
+      case 'my_communities':
+        console.log('Открыть мои сообщества');
+        break;
+      case 'my_posts':
+        console.log('Открыть мои посты');
+        break;
+      default:
+        console.log('Секция:', sectionId);
     }
-    // Можно добавить обработку других секций здесь
+  }
+
+  function openSubscriptions() {
+    navigation.navigate('Subscriptions');
   }
 
   function editProfile() {
@@ -138,6 +166,7 @@ function ProfileScreenWrapper({ navigation }: any) {
     email: 'alex@example.com',
     role: 'Пользователь',
     subscriptionType: 'Premium',
+    subscriptionStatus: 'premium' as const,
     bio: 'Music lover, tech enthusiast, always looking for the next great event.',
     eventsAttended: 24,
     eventsSaved: 12,
@@ -155,6 +184,7 @@ function ProfileScreenWrapper({ navigation }: any) {
       email={userData.email}
       role={userData.role}
       subscriptionType={userData.subscriptionType}
+      subscriptionStatus={userData.subscriptionStatus}
       bio={userData.bio}
       eventsAttended={userData.eventsAttended}
       eventsSaved={userData.eventsSaved}
@@ -164,6 +194,7 @@ function ProfileScreenWrapper({ navigation }: any) {
       onBecomeOrganizer={becomeOrganizer}
       onExplore={exploreEvents}
       onSectionPress={handleSectionPress}
+      onSubscriptionPress={openSubscriptions}
       onTabChange={handleTabChange}
       hasTickets={userData.hasTickets}
     />
@@ -202,14 +233,31 @@ export default function App() {
         <StatusBar style="dark" />
         <Stack.Navigator screenOptions={{ headerShown: false }}>
           <Stack.Screen name="MainTabs" component={TabNavigator} />
-          <Stack.Screen name="AllEvents" component={AllEventsScreen} />
-          <Stack.Screen name="EventDetail" component={EventDetailScreen} />
+          <Stack.Screen
+            name="AllEvents"
+            component={AllEventsScreen}
+            options={{
+              headerShown: true,
+              title: 'Все мероприятия',
+              headerBackTitle: 'Назад',
+            }}
+          />
+          <Stack.Screen
+            name="EventDetail"
+            component={EventDetailScreen}
+            options={{
+              headerShown: true,
+              title: 'Детали мероприятия',
+              headerBackTitle: 'Назад',
+            }}
+          />
           <Stack.Screen
             name="PostThread"
             component={PostThreadScreenWrapper}
             options={{
-              headerShown: false,
+              headerShown: true,
               title: 'Обсуждение',
+              headerBackTitle: 'Назад',
             }}
           />
         </Stack.Navigator>

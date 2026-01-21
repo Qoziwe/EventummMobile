@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useLayoutEffect } from 'react';
 import {
   View,
   Text,
@@ -7,8 +7,10 @@ import {
   TouchableOpacity,
   ScrollView,
   Image,
-  SafeAreaView,
+  StatusBar,
 } from 'react-native';
+// !!! ИЗМЕНЕНИЕ: Правильный импорт SafeAreaView
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -44,6 +46,13 @@ interface SearchScreenProps {
 
 export default function SearchScreen(props: SearchScreenProps) {
   const navigation = useNavigation();
+
+  // !!! ИЗМЕНЕНИЕ: Скрываем нативный хедер навигации
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerShown: false,
+    });
+  }, [navigation]);
 
   // --------------------
   // Мок-данные мероприятий
@@ -166,7 +175,6 @@ export default function SearchScreen(props: SearchScreenProps) {
   };
 
   const handleProfilePress = () => {
-    // Вместо отдельной кнопки профиля используем стандартную навигацию
     navigation.navigate('MainTabs' as never, { screen: 'Profile' } as never);
   };
 
@@ -182,7 +190,6 @@ export default function SearchScreen(props: SearchScreenProps) {
 
     if (text.trim().length > 0) {
       setIsSearching(true);
-      // Фильтрация мероприятий по поисковому запросу
       const filtered = mockEvents.filter(
         event =>
           event.title.toLowerCase().includes(text.toLowerCase()) ||
@@ -190,7 +197,6 @@ export default function SearchScreen(props: SearchScreenProps) {
           event.category.toLowerCase().includes(text.toLowerCase()) ||
           event.location.toLowerCase().includes(text.toLowerCase())
       );
-      // Сортировка по количеству просмотров (по убыванию)
       const sorted = filtered.sort((a, b) => b.views - a.views);
       setFilteredEvents(sorted);
     } else {
@@ -350,8 +356,11 @@ export default function SearchScreen(props: SearchScreenProps) {
   // Рендер
   // --------------------
   return (
+    // !!! ИЗМЕНЕНИЕ: edges={['top']} теперь будет работать корректно
     <SafeAreaView style={styles.fullContainer} edges={['top']}>
-      {/* Шапка как в CommunitiesScreen и ProfileScreen */}
+      <StatusBar barStyle="dark-content" backgroundColor={colors.light.background} />
+
+      {/* Шапка */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
           <Ionicons name="arrow-back" size={24} color={colors.light.foreground} />
@@ -396,9 +405,7 @@ export default function SearchScreen(props: SearchScreenProps) {
         </View>
 
         {showSearchResults ? (
-          // --------------------
           // Результаты поиска
-          // --------------------
           <View style={styles.resultsSection}>
             <Text style={styles.sectionTitle}>
               Найдено {filteredEvents.length} мероприятий по запросу "{searchValue}"
@@ -406,9 +413,7 @@ export default function SearchScreen(props: SearchScreenProps) {
             <View style={styles.resultsList}>{filteredEvents.map(renderEventItem)}</View>
           </View>
         ) : (
-          // --------------------
           // Контент по умолчанию
-          // --------------------
           <>
             {/* Recent searches */}
             {recentSearches.length > 0 ? (
@@ -517,9 +522,6 @@ export default function SearchScreen(props: SearchScreenProps) {
   );
 }
 
-// --------------------
-// Стили
-// --------------------
 const styles = StyleSheet.create({
   fullContainer: {
     flex: 1,
@@ -531,7 +533,6 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: spacing['2xl'],
   },
-  // Шапка как в CommunitiesScreen и ProfileScreen
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -540,6 +541,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: colors.light.border,
+    backgroundColor: colors.light.background,
   },
   backButton: {
     padding: spacing.xs,
