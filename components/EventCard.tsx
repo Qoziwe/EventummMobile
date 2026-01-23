@@ -1,51 +1,82 @@
-import { View, Text, StyleSheet, Image, TouchableOpacity } from "react-native"
-import { Ionicons } from "@expo/vector-icons"
-import { colors, spacing, borderRadius, typography } from "../theme/colors"
+import React from 'react';
+import { View, Text, StyleSheet, Image, TouchableOpacity, ViewStyle } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { colors, spacing, borderRadius, typography } from '../theme/colors';
 
-interface EventCardProps {
-  title: string
-  date: string
-  venue: string
-  attendees: number
-  price: string
-  category: string
-  imageUri?: string
-  onPress?: () => void
-  variant?: "default" | "compact"
+export interface EventItem {
+  id: string;
+  title: string;
+  date: string;
+  location: string;
+  price: string;
+  image: any;
+  // Поля для фильтров
+  categories: string[];
+  vibe: string;
+  district: string;
+  ageLimit: number;
+  timestamp: number;
+  priceValue: number;
+  addedAt: string;
+  // Опциональные
+  tags?: string[];
+  stats?: number;
+  description?: string;
+  organizer?: string;
+  isPopular?: boolean;
+  isForYou?: boolean;
+  isNextWeek?: boolean;
+}
+
+interface EventCardProps extends EventItem {
+  onPress?: () => void;
+  variant?: 'default' | 'compact' | 'list';
+  style?: ViewStyle;
 }
 
 export default function EventCard({
   title,
   date,
-  venue,
-  attendees,
+  location,
+  stats,
   price,
-  category,
-  imageUri,
+  image,
   onPress,
-  variant = "default",
+  variant = 'default',
+  style,
+  categories,
 }: EventCardProps) {
-  const isCompact = variant === "compact"
+  const isCompact = variant === 'compact';
+  const isList = variant === 'list';
+
+  const source = typeof image === 'string' ? { uri: image } : image;
 
   return (
     <TouchableOpacity
-      style={[styles.container, isCompact && styles.containerCompact]}
+      style={[
+        styles.container,
+        isCompact && styles.containerCompact,
+        isList && styles.containerList,
+        style,
+      ]}
       onPress={onPress}
       activeOpacity={0.9}
     >
-      {/* Image */}
-      <View style={[styles.imageContainer, isCompact && styles.imageContainerCompact]}>
-        {imageUri ? (
-          <Image source={{ uri: imageUri }} style={styles.image} resizeMode="cover" />
-        ) : (
-          <View style={styles.imagePlaceholder} />
-        )}
+      <View
+        style={[
+          styles.imageContainer,
+          isCompact && styles.imageContainerCompact,
+          isList && styles.imageContainerList,
+        ]}
+      >
+        <Image source={source} style={styles.image} resizeMode="cover" />
         <View style={styles.categoryBadge}>
-          <Text style={styles.categoryText}>{category}</Text>
+          <Text style={styles.categoryText}>
+            {categories ? categories[0] : 'Событие'}
+          </Text>
         </View>
       </View>
 
-      {/* Content */}
       <View style={styles.content}>
         <Text style={[styles.title, isCompact && styles.titleCompact]} numberOfLines={2}>
           {title}
@@ -53,29 +84,48 @@ export default function EventCard({
 
         <View style={styles.infoContainer}>
           <View style={styles.infoRow}>
-            <Ionicons name="time-outline" size={12} color={colors.light.mutedForeground} />
+            <Ionicons
+              name="calendar-outline"
+              size={12}
+              color={colors.light.mutedForeground}
+            />
             <Text style={styles.infoText}>{date}</Text>
           </View>
           <View style={styles.infoRow}>
-            <Ionicons name="location-outline" size={12} color={colors.light.mutedForeground} />
+            <Ionicons
+              name="location-outline"
+              size={12}
+              color={colors.light.mutedForeground}
+            />
             <Text style={styles.infoText} numberOfLines={1}>
-              {venue}
+              {location}
             </Text>
           </View>
-          <View style={styles.infoRow}>
-            <Ionicons name="people-outline" size={12} color={colors.light.mutedForeground} />
-            <Text style={styles.infoText}>{attendees} участников</Text>
-          </View>
+          {stats !== undefined && (
+            <View style={styles.infoRow}>
+              <Ionicons
+                name="people-outline"
+                size={12}
+                color={colors.light.mutedForeground}
+              />
+              <Text style={styles.infoText}>{stats}</Text>
+            </View>
+          )}
         </View>
 
-        {/* Button */}
-        <TouchableOpacity style={styles.button}>
-          <Ionicons name="ticket-outline" size={14} color={colors.light.primaryForeground} />
-          <Text style={styles.buttonText}>{price}</Text>
-        </TouchableOpacity>
+        <View style={styles.footer}>
+          <View style={styles.priceTag}>
+            <Ionicons
+              name="ticket-outline"
+              size={14}
+              color={colors.light.primaryForeground}
+            />
+            <Text style={styles.priceText}>{price}</Text>
+          </View>
+        </View>
       </View>
     </TouchableOpacity>
-  )
+  );
 }
 
 const styles = StyleSheet.create({
@@ -83,85 +133,97 @@ const styles = StyleSheet.create({
     width: 260,
     backgroundColor: colors.light.card,
     borderRadius: borderRadius.xl,
-    overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: colors.light.border,
+    marginRight: spacing.sm,
+    marginBottom: 4,
   },
   containerCompact: {
     width: 220,
   },
+  containerList: {
+    width: '100%',
+    marginBottom: spacing.md,
+    marginRight: 0,
+    flexDirection: 'column',
+  },
   imageContainer: {
     height: 140,
-    position: "relative",
+    backgroundColor: colors.light.muted,
+    position: 'relative',
   },
   imageContainerCompact: {
     height: 120,
   },
-  image: {
-    width: "100%",
-    height: "100%",
+  imageContainerList: {
+    height: 180,
   },
-  imagePlaceholder: {
-    width: "100%",
-    height: "100%",
-    backgroundColor: colors.light.muted,
+  image: {
+    width: '100%',
+    height: '100%',
   },
   categoryBadge: {
-    position: "absolute",
+    position: 'absolute',
     top: spacing.sm,
     right: spacing.sm,
-    backgroundColor: colors.light.primary,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
     paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
+    paddingVertical: 4,
     borderRadius: borderRadius.md,
   },
   categoryText: {
     fontSize: typography.xs,
-    fontWeight: "600",
-    color: colors.light.primaryForeground,
+    fontWeight: '700',
+    color: colors.light.primary,
+    textTransform: 'uppercase',
   },
   content: {
     padding: spacing.md,
     gap: spacing.sm,
   },
   title: {
-    fontSize: typography.sm,
-    fontWeight: "700",
+    fontSize: typography.base,
+    fontWeight: '700',
     color: colors.light.foreground,
-    lineHeight: 18,
+    lineHeight: 20,
+    minHeight: 40,
   },
   titleCompact: {
     fontSize: typography.sm,
+    lineHeight: 18,
+    minHeight: 36,
   },
   infoContainer: {
-    gap: spacing.xs,
+    gap: 4,
   },
   infoRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xs,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   infoText: {
     fontSize: typography.xs,
     color: colors.light.mutedForeground,
     flex: 1,
   },
-  button: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: spacing.xs,
-    backgroundColor: colors.light.primary,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.md,
+  footer: {
     marginTop: spacing.xs,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  buttonText: {
+  priceTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: colors.light.primary,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: borderRadius.md,
+  },
+  priceText: {
     fontSize: typography.xs,
-    fontWeight: "600",
+    fontWeight: '600',
     color: colors.light.primaryForeground,
   },
-})
+});

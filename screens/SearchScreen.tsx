@@ -1,374 +1,156 @@
-import React, { useState, useLayoutEffect } from 'react';
+import React, { useState, useLayoutEffect, useMemo } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  TextInput,
   TouchableOpacity,
   ScrollView,
-  Image,
   StatusBar,
+  Keyboard,
 } from 'react-native';
-// !!! ИЗМЕНЕНИЕ: Правильный импорт SafeAreaView
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-
 import { colors, spacing, borderRadius, typography } from '../theme/colors';
 
-// --------------------
-// Типы
-// --------------------
-interface EventItem {
-  id: string;
-  title: string;
-  description: string;
-  date: string;
-  location: string;
-  price: string;
-  category: string;
-  views: number;
-  imageUrl?: string;
-}
+import HeroSection from '../components/HeroSection';
+import EventCard, { EventItem } from '../components/EventCard';
+import { ALL_EVENTS } from '../data/mockData';
 
-interface SearchScreenProps {
-  searchValue?: string;
-  onSearchChange?: (text: string) => void;
-  onSearchClear?: () => void;
-  onSearchSubmit?: () => void;
-  recentSearches?: string[];
-  onRecentSearchPress?: (search: string) => void;
-  popularTags?: string[];
-  onTagPress?: (tag: string) => void;
-  onQuickFilter?: (filter: string) => void;
-  showResults?: boolean;
-}
-
-export default function SearchScreen(props: SearchScreenProps) {
+export default function SearchScreen() {
   const navigation = useNavigation();
 
-  // !!! ИЗМЕНЕНИЕ: Скрываем нативный хедер навигации
+  const [searchValue, setSearchValue] = useState('');
+  const [currentFilters, setCurrentFilters] = useState<Record<string, string>>({});
+
+  const isSearching = searchValue.length > 0 || Object.keys(currentFilters).length > 0;
+
   useLayoutEffect(() => {
-    navigation.setOptions({
-      headerShown: false,
-    });
+    navigation.setOptions({ headerShown: false });
   }, [navigation]);
 
-  // --------------------
-  // Мок-данные мероприятий
-  // --------------------
-  const mockEvents: EventItem[] = [
-    {
-      id: '1',
-      title: 'Рок-фестиваль в Алматы',
-      description: 'Крупнейший рок-фестиваль года с участием звёзд мировой сцены',
-      date: '15 июня 2024',
-      location: 'Алматы Арена',
-      price: 'от 5000 ₸',
-      category: 'Концерт',
-      views: 12500,
-      imageUrl: 'https://picsum.photos/seed/concert1/300/200',
-    },
-    {
-      id: '2',
-      title: 'Выставка современного искусства',
-      description: 'Работы современных казахстанских художников',
-      date: '10-25 мая 2024',
-      location: 'Музей искусств',
-      price: '1500 ₸',
-      category: 'Искусство',
-      views: 8900,
-      imageUrl: 'https://picsum.photos/seed/art1/300/200',
-    },
-    {
-      id: '3',
-      title: 'Фестиваль еды "Вкус Востока"',
-      description: 'Гастрономический фестиваль с блюдами национальной кухни',
-      date: '20-22 мая 2024',
-      location: 'Парк Первого Президента',
-      price: 'Бесплатно',
-      category: 'Фестиваль',
-      views: 15600,
-      imageUrl: 'https://picsum.photos/seed/food1/300/200',
-    },
-    {
-      id: '4',
-      title: 'Бизнес-конференция "StartUp Kazakhstan"',
-      description: 'Встреча инвесторов и стартаперов со всей страны',
-      date: '5 июня 2024',
-      location: 'Rixos Hotel',
-      price: '25000 ₸',
-      category: 'Бизнес',
-      views: 5400,
-      imageUrl: 'https://picsum.photos/seed/business1/300/200',
-    },
-    {
-      id: '5',
-      title: 'Театральная премьера "Абай"',
-      description: 'Новая постановка по произведениям Абая Кунанбаева',
-      date: 'Каждый четверг',
-      location: 'Казахский театр драмы',
-      price: 'от 3000 ₸',
-      category: 'Театр',
-      views: 7200,
-      imageUrl: 'https://picsum.photos/seed/theater1/300/200',
-    },
-    {
-      id: '6',
-      title: 'Марафон по Алматы',
-      description: 'Ежегодный городской марафон на 10 км и 21 км',
-      date: '8 июня 2024',
-      location: 'Стадион "Алматы Арена"',
-      price: 'Бесплатно',
-      category: 'Спорт',
-      views: 21000,
-      imageUrl: 'https://picsum.photos/seed/sport1/300/200',
-    },
-    {
-      id: '7',
-      title: 'Джазовый вечер',
-      description: 'Выступления лучших джазовых коллективов города',
-      date: '18 мая 2024',
-      location: 'Jazz Club Almaty',
-      price: '4000 ₸',
-      category: 'Концерт',
-      views: 4800,
-      imageUrl: 'https://picsum.photos/seed/jazz1/300/200',
-    },
-    {
-      id: '8',
-      title: 'Выставка "Нур-Султан: 25 лет"',
-      description: 'Фотографии и артефакты из истории столицы',
-      date: '1-30 мая 2024',
-      location: 'Национальный музей',
-      price: '1000 ₸',
-      category: 'История',
-      views: 6300,
-      imageUrl: 'https://picsum.photos/seed/history1/300/200',
-    },
-  ];
+  // --- ГЛАВНАЯ ЛОГИКА ФИЛЬТРАЦИИ ---
+  const filteredEvents = useMemo(() => {
+    let result = ALL_EVENTS;
 
-  // --------------------
-  // Состояние
-  // --------------------
-  const [searchValue, setSearchValue] = useState(props.searchValue || '');
-  const [filteredEvents, setFilteredEvents] = useState<EventItem[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
+    if (isSearching) {
+      result = result.filter(event => {
+        // 1. Поиск по тексту
+        if (searchValue.length > 0) {
+          const s = searchValue.toLowerCase();
+          const matches =
+            event.title.toLowerCase().includes(s) ||
+            event.location.toLowerCase().includes(s) ||
+            (event.tags && event.tags.some(t => t.toLowerCase().includes(s)));
 
-  const recentSearches = props.recentSearches || [];
-  const popularTags = props.popularTags || [
-    'Концерт',
-    'Бесплатно',
-    'Спорт',
-    'Искусство',
-    'Фестиваль',
-    'Театр',
-    'Бизнес',
-    'Вечеринка',
-  ];
+          if (!matches) return false;
+        }
 
-  // --------------------
-  // Обработчики навигации
-  // --------------------
-  const handleBackPress = () => {
-    navigation.goBack();
-  };
+        // 2. ФИЛЬТРЫ
+        for (const [key, value] of Object.entries(currentFilters)) {
+          if (!value || value === 'any') continue;
 
-  const handleProfilePress = () => {
-    navigation.navigate('MainTabs' as never, { screen: 'Profile' } as never);
-  };
+          // Район
+          if (key === 'district' && event.district !== value) return false;
 
-  // --------------------
-  // Функции поиска
-  // --------------------
-  const handleSearch = (text: string) => {
-    setSearchValue(text);
+          // Возраст
+          if (key === 'age' && event.ageLimit !== parseInt(value)) return false;
 
-    if (props.onSearchChange) {
-      props.onSearchChange(text);
+          // Время (Математика по часам)
+          if (key === 'time') {
+            const hour = new Date(event.timestamp || 0).getHours();
+            if (value === 'morning' && (hour < 6 || hour >= 12)) return false;
+            if (value === 'afternoon' && (hour < 12 || hour >= 18)) return false;
+            if (value === 'evening' && (hour < 18 || hour >= 24)) return false;
+            if (value === 'night' && (hour < 0 || hour >= 6)) return false;
+          }
+
+          // Категория
+          if (key === 'category' && !event.categories?.includes(value)) return false;
+
+          // Вайб
+          if (key === 'vibe' && event.vibe !== value) return false;
+
+          // Цена
+          if (key === 'price') {
+            if (value === 'free' && event.priceValue !== 0) return false;
+            if (value === 'low' && (event.priceValue || 0) > 5000) return false;
+          }
+
+          // Дата
+          if (key === 'date') {
+            const now = new Date();
+            const todayStart = new Date(
+              now.getFullYear(),
+              now.getMonth(),
+              now.getDate()
+            ).getTime();
+            const tomorrowStart = todayStart + 24 * 60 * 60 * 1000;
+            const dayAfterTomorrowStart = tomorrowStart + 24 * 60 * 60 * 1000;
+            const eventTime = event.timestamp || 0;
+
+            if (value === 'today') {
+              if (eventTime < todayStart || eventTime >= tomorrowStart) return false;
+            }
+            if (value === 'tomorrow') {
+              if (eventTime < tomorrowStart || eventTime >= dayAfterTomorrowStart)
+                return false;
+            }
+            if (value === 'week') {
+              if (
+                eventTime < todayStart ||
+                eventTime > todayStart + 7 * 24 * 60 * 60 * 1000
+              )
+                return false;
+            }
+            if (value === 'weekend') {
+              const d = new Date(eventTime).getDay();
+              if (d !== 0 && d !== 6 && d !== 5) return false;
+            }
+          }
+        }
+        return true;
+      });
     }
 
-    if (text.trim().length > 0) {
-      setIsSearching(true);
-      const filtered = mockEvents.filter(
-        event =>
-          event.title.toLowerCase().includes(text.toLowerCase()) ||
-          event.description.toLowerCase().includes(text.toLowerCase()) ||
-          event.category.toLowerCase().includes(text.toLowerCase()) ||
-          event.location.toLowerCase().includes(text.toLowerCase())
-      );
-      const sorted = filtered.sort((a, b) => b.views - a.views);
-      setFilteredEvents(sorted);
-    } else {
-      setIsSearching(false);
-      setFilteredEvents([]);
-    }
-  };
-
-  const handleSearchClear = () => {
-    setSearchValue('');
-    setFilteredEvents([]);
-    setIsSearching(false);
-
-    if (props.onSearchClear) {
-      props.onSearchClear();
-    }
-  };
-
-  const handleSearchSubmit = () => {
-    setIsSearching(true);
-
-    if (props.onSearchSubmit) {
-      props.onSearchSubmit();
-    }
-  };
+    // СОРТИРОВКА
+    const sortMode = currentFilters['sort'];
+    return [...result].sort((a, b) => {
+      if (sortMode === 'popular') return (b.stats || 0) - (a.stats || 0);
+      if (sortMode === 'soon') return (a.timestamp || 0) - (b.timestamp || 0);
+      return new Date(b.addedAt || 0).getTime() - new Date(a.addedAt || 0).getTime();
+    });
+  }, [searchValue, currentFilters, isSearching]);
 
   const handleTagPress = (tag: string) => {
-    setSearchValue(tag);
-    setIsSearching(true);
-
-    const filtered = mockEvents.filter(
-      event =>
-        event.category.toLowerCase().includes(tag.toLowerCase()) ||
-        event.title.toLowerCase().includes(tag.toLowerCase())
-    );
-    const sorted = filtered.sort((a, b) => b.views - a.views);
-    setFilteredEvents(sorted);
-
-    if (props.onTagPress) {
-      props.onTagPress(tag);
-    }
+    if (tag === 'Бесплатно') setCurrentFilters(prev => ({ ...prev, price: 'free' }));
+    else if (tag === 'Вечеринка') setCurrentFilters(prev => ({ ...prev, vibe: 'party' }));
+    else setSearchValue(tag);
   };
 
-  const handleQuickFilter = (filter: string) => {
-    let filtered: EventItem[] = [];
-
-    switch (filter) {
-      case 'popular':
-        filtered = [...mockEvents].sort((a, b) => b.views - a.views);
-        setSearchValue('Популярное');
-        break;
-      case 'today':
-        filtered = mockEvents.filter(
-          event => event.date.includes('сегодня') || event.date.includes('май')
-        );
-        setSearchValue('Сегодня');
-        break;
-      case 'free':
-        filtered = mockEvents.filter(event =>
-          event.price.toLowerCase().includes('бесплатно')
-        );
-        setSearchValue('Бесплатно');
-        break;
-      case 'nearby':
-        filtered = mockEvents.filter(event => event.location.includes('Алматы'));
-        setSearchValue('Рядом');
-        break;
-    }
-
-    const sorted = filtered.sort((a, b) => b.views - a.views);
-    setFilteredEvents(sorted);
-    setIsSearching(true);
-
-    if (props.onQuickFilter) {
-      props.onQuickFilter(filter);
-    }
+  const handleResetAll = () => {
+    setSearchValue('');
+    setCurrentFilters({});
+    Keyboard.dismiss();
   };
 
-  const handleRecentSearchPress = (search: string) => {
-    setSearchValue(search);
-    setIsSearching(true);
-
-    const filtered = mockEvents.filter(
-      event =>
-        event.title.toLowerCase().includes(search.toLowerCase()) ||
-        event.description.toLowerCase().includes(search.toLowerCase())
-    );
-    const sorted = filtered.sort((a, b) => b.views - a.views);
-    setFilteredEvents(sorted);
-
-    if (props.onRecentSearchPress) {
-      props.onRecentSearchPress(search);
-    }
+  const applyPresetFilter = (key: string, value: string) => {
+    setCurrentFilters(prev => ({ ...prev, [key]: value }));
   };
 
-  // --------------------
-  // Рендер мероприятия
-  // --------------------
-  const renderEventItem = (event: EventItem) => (
-    <TouchableOpacity key={event.id} style={styles.eventCard}>
-      <View style={styles.eventImageContainer}>
-        <Image
-          source={{ uri: event.imageUrl }}
-          style={styles.eventImage}
-          resizeMode="cover"
-        />
-        <View style={styles.eventCategoryBadge}>
-          <Text style={styles.eventCategoryText}>{event.category}</Text>
-        </View>
-      </View>
-
-      <View style={styles.eventContent}>
-        <Text style={styles.eventTitle}>{event.title}</Text>
-        <Text style={styles.eventDescription} numberOfLines={2}>
-          {event.description}
-        </Text>
-
-        <View style={styles.eventDetails}>
-          <View style={styles.eventDetailItem}>
-            <Ionicons
-              name="calendar-outline"
-              size={14}
-              color={colors.light.mutedForeground}
-            />
-            <Text style={styles.eventDetailText}>{event.date}</Text>
-          </View>
-
-          <View style={styles.eventDetailItem}>
-            <Ionicons
-              name="location-outline"
-              size={14}
-              color={colors.light.mutedForeground}
-            />
-            <Text style={styles.eventDetailText}>{event.location}</Text>
-          </View>
-        </View>
-
-        <View style={styles.eventFooter}>
-          <Text style={styles.eventPrice}>{event.price}</Text>
-
-          <View style={styles.eventViews}>
-            <Ionicons name="eye-outline" size={14} color={colors.light.mutedForeground} />
-            <Text style={styles.eventViewsText}>{event.views.toLocaleString()}</Text>
-          </View>
-        </View>
-      </View>
-    </TouchableOpacity>
-  );
-
-  // --------------------
-  // Условия отображения
-  // --------------------
-  const hasSearchText = searchValue.length > 0;
-  const showSearchResults = isSearching && filteredEvents.length > 0;
-
-  // --------------------
-  // Рендер
-  // --------------------
   return (
-    // !!! ИЗМЕНЕНИЕ: edges={['top']} теперь будет работать корректно
     <SafeAreaView style={styles.fullContainer} edges={['top']}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.light.background} />
 
-      {/* Шапка */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
+        <TouchableOpacity
+          style={styles.headerButtonLeft}
+          onPress={() => navigation.goBack()}
+        >
           <Ionicons name="arrow-back" size={24} color={colors.light.foreground} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Поиск</Text>
-        <TouchableOpacity style={styles.profileButton} onPress={handleProfilePress}>
-          <Ionicons name="person-outline" size={22} color={colors.light.foreground} />
-        </TouchableOpacity>
+        <View style={styles.headerButtonRight} />
       </View>
 
       <ScrollView
@@ -376,143 +158,126 @@ export default function SearchScreen(props: SearchScreenProps) {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {/* Search header */}
-        <View style={styles.searchHeader}>
-          <View style={styles.searchContainer}>
-            <Ionicons name="search" size={18} color={colors.light.mutedForeground} />
+        <HeroSection
+          searchValue={searchValue}
+          onSearchChange={setSearchValue}
+          onSearchClear={() => setSearchValue('')}
+          activeFilters={currentFilters}
+          onApplyFilters={setCurrentFilters}
+          autoApply={true}
+          showApplyButton={false}
+          showTitle={false}
+          compact={true}
+          searchPlaceholder="События, места, люди..."
+        />
 
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Поиск событий, тегов, мест..."
-              placeholderTextColor={colors.light.mutedForeground}
-              value={searchValue}
-              onChangeText={handleSearch}
-              onSubmitEditing={handleSearchSubmit}
-              returnKeyType="search"
-              autoFocus
-            />
-
-            {hasSearchText ? (
-              <TouchableOpacity onPress={handleSearchClear}>
+        {isSearching ? (
+          <View style={styles.resultsList}>
+            <View style={styles.resultsHeader}>
+              <Text style={styles.sectionTitle}>
+                Найдено {filteredEvents.length} событий
+              </Text>
+              <TouchableOpacity onPress={handleResetAll} style={styles.resetButton}>
+                <Text style={styles.resetButtonText}>Сбросить</Text>
                 <Ionicons
-                  name="close-circle"
-                  size={20}
-                  color={colors.light.mutedForeground}
+                  name="close-circle-outline"
+                  size={16}
+                  color={colors.light.primary}
                 />
               </TouchableOpacity>
-            ) : null}
-          </View>
-        </View>
-
-        {showSearchResults ? (
-          // Результаты поиска
-          <View style={styles.resultsSection}>
-            <Text style={styles.sectionTitle}>
-              Найдено {filteredEvents.length} мероприятий по запросу "{searchValue}"
-            </Text>
-            <View style={styles.resultsList}>{filteredEvents.map(renderEventItem)}</View>
+            </View>
+            {filteredEvents.map(event => (
+              <EventCard
+                key={event.id}
+                {...event}
+                variant="list"
+                onPress={() =>
+                  navigation.navigate('EventDetail' as never, { ...event } as never)
+                }
+              />
+            ))}
+            {filteredEvents.length === 0 && (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyStateText}>Ничего не найдено</Text>
+              </View>
+            )}
           </View>
         ) : (
-          // Контент по умолчанию
           <>
-            {/* Recent searches */}
-            {recentSearches.length > 0 ? (
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Недавние запросы</Text>
-
-                <View style={styles.recentList}>
-                  {recentSearches.map(function (search, index) {
-                    return (
-                      <TouchableOpacity
-                        key={index}
-                        style={styles.recentItem}
-                        onPress={() => handleRecentSearchPress(search)}
-                      >
-                        <Ionicons
-                          name="time-outline"
-                          size={16}
-                          color={colors.light.mutedForeground}
-                        />
-                        <Text style={styles.recentText}>{search}</Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              </View>
-            ) : null}
-
-            {/* Popular tags */}
-            {popularTags.length > 0 ? (
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Популярные теги</Text>
-
-                <View style={styles.tagsContainer}>
-                  {popularTags.map(function (tag, index) {
-                    return (
-                      <TouchableOpacity
-                        key={index}
-                        style={styles.tag}
-                        onPress={() => handleTagPress(tag)}
-                      >
-                        <Text style={styles.tagText}>{tag}</Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              </View>
-            ) : null}
-
-            {/* Quick filters */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Быстрые фильтры</Text>
+              <Text style={styles.sectionTitle}>Популярные теги</Text>
+              <View style={styles.tagsContainer}>
+                {[
+                  'Концерт',
+                  'Искусство',
+                  'Спорт',
+                  'Бизнес',
+                  'Бесплатно',
+                  'Вечеринка',
+                ].map((tag, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    style={styles.tag}
+                    onPress={() => handleTagPress(tag)}
+                  >
+                    <Text style={styles.tagText}>{tag}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
 
-              <View style={styles.quickFilters}>
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Быстрые подборки</Text>
+              <View style={styles.quickFiltersGrid}>
                 <TouchableOpacity
-                  style={styles.quickFilter}
-                  onPress={() => handleQuickFilter('popular')}
-                >
-                  <Ionicons name="flame-outline" size={20} color={colors.light.primary} />
-                  <Text style={styles.quickFilterText}>Популярное</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.quickFilter}
-                  onPress={() => handleQuickFilter('today')}
-                >
-                  <Ionicons name="today-outline" size={20} color={colors.light.primary} />
-                  <Text style={styles.quickFilterText}>Сегодня</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.quickFilter}
-                  onPress={() => handleQuickFilter('free')}
-                >
-                  <Ionicons name="gift-outline" size={20} color={colors.light.primary} />
-                  <Text style={styles.quickFilterText}>Бесплатно</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.quickFilter}
-                  onPress={() => handleQuickFilter('nearby')}
+                  style={styles.quickFilterButton}
+                  onPress={() => applyPresetFilter('sort', 'popular')}
                 >
                   <Ionicons
-                    name="location-outline"
+                    name="flame-outline"
                     size={20}
-                    color={colors.light.primary}
+                    color={colors.light.foreground}
                   />
-                  <Text style={styles.quickFilterText}>Рядом</Text>
+                  <Text style={styles.quickFilterText}>Популярное</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.quickFilterButton}
+                  onPress={() => applyPresetFilter('date', 'today')}
+                >
+                  <Ionicons
+                    name="calendar-outline"
+                    size={20}
+                    color={colors.light.foreground}
+                  />
+                  <Text style={styles.quickFilterText}>Сегодня</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.quickFilterButton}
+                  onPress={() => applyPresetFilter('price', 'free')}
+                >
+                  <Ionicons
+                    name="gift-outline"
+                    size={20}
+                    color={colors.light.foreground}
+                  />
+                  <Text style={styles.quickFilterText}>Бесплатно</Text>
                 </TouchableOpacity>
               </View>
             </View>
 
-            {/* Popular events */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Популярные сейчас</Text>
-              <View style={styles.resultsList}>
-                {mockEvents
-                  .sort((a, b) => b.views - a.views)
-                  .slice(0, 3)
-                  .map(renderEventItem)}
+              <Text style={styles.sectionTitle}>Недавно добавленные</Text>
+              <View style={{ gap: 12 }}>
+                {filteredEvents.map(event => (
+                  <EventCard
+                    key={event.id}
+                    {...event}
+                    variant="list"
+                    onPress={() =>
+                      navigation.navigate('EventDetail' as never, { ...event } as never)
+                    }
+                  />
+                ))}
               </View>
             </View>
           </>
@@ -523,16 +288,7 @@ export default function SearchScreen(props: SearchScreenProps) {
 }
 
 const styles = StyleSheet.create({
-  fullContainer: {
-    flex: 1,
-    backgroundColor: colors.light.background,
-  },
-  container: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingBottom: spacing['2xl'],
-  },
+  fullContainer: { flex: 1, backgroundColor: colors.light.background },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -541,179 +297,72 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: colors.light.border,
-    backgroundColor: colors.light.background,
+    minHeight: 56,
   },
-  backButton: {
-    padding: spacing.xs,
+  headerButtonLeft: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+  },
+  headerButtonRight: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'flex-end',
   },
   headerTitle: {
+    flex: 1,
     fontSize: typography.xl,
     fontWeight: '700',
     color: colors.light.foreground,
     textAlign: 'center',
   },
-  profileButton: {
-    padding: spacing.xs,
-  },
-  searchHeader: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.light.border,
-  },
-  searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.light.secondary,
-    borderRadius: borderRadius.xl,
-    paddingHorizontal: spacing.md,
-    height: 48,
-    gap: spacing.sm,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: typography.base,
-    color: colors.light.foreground,
-  },
-  section: {
-    padding: spacing.lg,
-  },
-  resultsSection: {
-    padding: spacing.lg,
-  },
+  container: { flex: 1 },
+  scrollContent: { paddingBottom: spacing['2xl'] },
+  section: { paddingHorizontal: spacing.lg, marginBottom: spacing.lg },
   sectionTitle: {
     fontSize: typography.lg,
-    fontWeight: '600',
+    fontWeight: '700',
     color: colors.light.foreground,
     marginBottom: spacing.md,
   },
-  recentList: {
-    gap: spacing.sm,
-  },
-  recentItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    paddingVertical: spacing.sm,
-  },
-  recentText: {
-    fontSize: typography.base,
-    color: colors.light.foreground,
-  },
-  tagsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-  },
+  tagsContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   tag: {
     backgroundColor: colors.light.secondary,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.full,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: 10,
+    borderRadius: 20,
   },
-  tagText: {
-    fontSize: typography.sm,
-    color: colors.light.foreground,
-  },
-  quickFilters: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.md,
-  },
-  quickFilter: {
-    width: '47%',
-    flexDirection: 'row',
+  tagText: { fontSize: typography.sm, color: colors.light.foreground, fontWeight: '500' },
+  quickFiltersGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
+  quickFilterButton: {
+    width: '30%',
+    flexDirection: 'column',
     alignItems: 'center',
+    paddingVertical: spacing.lg,
+    backgroundColor: colors.light.secondary,
+    borderRadius: borderRadius.lg,
     gap: spacing.sm,
-    padding: spacing.lg,
-    backgroundColor: colors.light.card,
-    borderRadius: borderRadius.xl,
-    borderWidth: 1,
-    borderColor: colors.light.border,
   },
   quickFilterText: {
     fontSize: typography.sm,
     fontWeight: '500',
     color: colors.light.foreground,
   },
-  resultsList: {
-    gap: spacing.md,
-  },
-  eventCard: {
-    backgroundColor: colors.light.card,
-    borderRadius: borderRadius.xl,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: colors.light.border,
-  },
-  eventImageContainer: {
-    position: 'relative',
-    height: 160,
-  },
-  eventImage: {
-    width: '100%',
-    height: '100%',
-  },
-  eventCategoryBadge: {
-    position: 'absolute',
-    top: spacing.sm,
-    left: spacing.sm,
-    backgroundColor: colors.light.primary,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: borderRadius.full,
-  },
-  eventCategoryText: {
-    fontSize: typography.xs,
-    fontWeight: '600',
-    color: colors.light.primaryForeground,
-  },
-  eventContent: {
-    padding: spacing.md,
-  },
-  eventTitle: {
-    fontSize: typography.lg,
-    fontWeight: '600',
-    color: colors.light.foreground,
-    marginBottom: spacing.xs,
-  },
-  eventDescription: {
-    fontSize: typography.sm,
-    color: colors.light.mutedForeground,
-    marginBottom: spacing.md,
-    lineHeight: 18,
-  },
-  eventDetails: {
-    flexDirection: 'row',
-    gap: spacing.lg,
-    marginBottom: spacing.md,
-  },
-  eventDetailItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  eventDetailText: {
-    fontSize: typography.xs,
-    color: colors.light.mutedForeground,
-  },
-  eventFooter: {
+  resultsList: { paddingHorizontal: spacing.lg, gap: spacing.sm },
+  resultsHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: spacing.md,
   },
-  eventPrice: {
-    fontSize: typography.base,
-    fontWeight: '600',
+  resetButton: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  resetButtonText: {
     color: colors.light.primary,
+    fontSize: typography.sm,
+    fontWeight: '600',
   },
-  eventViews: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  eventViewsText: {
-    fontSize: typography.xs,
-    color: colors.light.mutedForeground,
-  },
+  emptyState: { alignItems: 'center', paddingVertical: spacing.xl },
+  emptyStateText: { fontSize: typography.base, color: colors.light.mutedForeground },
 });

@@ -1,9 +1,31 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { FeatureItem } from './FeatureItem';
-import type { BillingPeriod } from './BillingToggle';
-import { colors, spacing, borderRadius, typography } from '../../theme/colors';
 import { Ionicons } from '@expo/vector-icons';
+import { colors, spacing, borderRadius, typography } from '../../theme/colors';
+import type { BillingPeriod } from './BillingToggle';
+
+// --- Компонент строки фичи ---
+const FeatureItem = ({ text, included }: { text: string; included: boolean }) => (
+  <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 6 }}>
+    <Ionicons
+      name={included ? 'checkmark-circle' : 'close-circle'}
+      size={18}
+      color={included ? colors.light.primary : colors.light.muted}
+      style={{ marginRight: 8, marginTop: 1 }}
+    />
+    <Text
+      style={{
+        fontSize: 13,
+        color: included ? colors.light.foreground : colors.light.mutedForeground,
+        flex: 1,
+        lineHeight: 18,
+        textDecorationLine: included ? 'none' : 'line-through',
+      }}
+    >
+      {text}
+    </Text>
+  </View>
+);
 
 export interface PlanFeature {
   text: string;
@@ -11,7 +33,7 @@ export interface PlanFeature {
 }
 
 export interface Plan {
-  id: 'free' | 'community' | 'vip';
+  id: string;
   name: string;
   description: string;
   monthlyPrice: number;
@@ -44,21 +66,6 @@ const calculatePrice = (monthlyPrice: number, billingPeriod: BillingPeriod): num
   }
 };
 
-const getPeriodLabel = (billingPeriod: BillingPeriod): string => {
-  switch (billingPeriod) {
-    case '1month':
-      return 'месяц';
-    case '3months':
-      return '3 месяца';
-    case '6months':
-      return '6 месяцев';
-    case 'yearly':
-      return 'год';
-    default:
-      return 'месяц';
-  }
-};
-
 export function PlanCard({
   plan,
   billingPeriod,
@@ -66,9 +73,9 @@ export function PlanCard({
   onSelect,
 }: PlanCardProps) {
   const price = calculatePrice(plan.monthlyPrice, billingPeriod);
-  const periodLabel = getPeriodLabel(billingPeriod);
   const isFree = plan.id === 'free';
 
+  // Иконки вместо эмодзи
   const getIconContent = () => {
     switch (plan.iconType) {
       case 'free':
@@ -78,7 +85,7 @@ export function PlanCard({
       case 'vip':
         return { icon: 'star-outline', bg: '#FF9500' };
       default:
-        return { icon: 'star-outline', bg: '#007AFF' };
+        return { icon: 'cube-outline', bg: '#007AFF' };
     }
   };
 
@@ -92,6 +99,7 @@ export function PlanCard({
         </View>
       )}
 
+      {/* Иконка */}
       <View style={[styles.iconBox, { backgroundColor: iconData.bg }]}>
         <Ionicons name={iconData.icon as any} size={32} color="#FFFFFF" />
       </View>
@@ -99,6 +107,7 @@ export function PlanCard({
       <Text style={styles.planName}>{plan.name}</Text>
       <Text style={styles.description}>{plan.description}</Text>
 
+      {/* Цена */}
       <View style={styles.priceContainer}>
         {isFree ? (
           <Text style={styles.freePrice}>Бесплатно</Text>
@@ -106,18 +115,18 @@ export function PlanCard({
           <View style={styles.priceRow}>
             <Text style={styles.currency}>₸</Text>
             <Text style={styles.priceAmount}>{price.toLocaleString('ru-RU')}</Text>
-            {/* <Text style={styles.periodLabel}>/ {periodLabel}</Text> - Убрал, чтобы не мешало крупной цене, или можно оставить */}
           </View>
         )}
       </View>
 
+      {/* Фичи */}
       <View style={styles.featuresContainer}>
         {plan.features.map((feature, index) => (
           <FeatureItem key={index} text={feature.text} included={feature.included} />
         ))}
       </View>
 
-      {/* Кнопка в самом низу */}
+      {/* Кнопка */}
       <View style={{ marginTop: 'auto' }}>
         <TouchableOpacity
           style={[
@@ -146,20 +155,18 @@ export function PlanCard({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.light.card, // Теперь белый
+    backgroundColor: colors.light.card,
     borderRadius: borderRadius.xl,
     padding: spacing.lg,
     borderWidth: 1,
     borderColor: colors.light.border,
     width: 280,
     marginRight: spacing.md,
-    position: 'relative',
-    // Небольшая тень как на EventCard
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
-    elevation: 2,
+    elevation: 3,
   },
   containerRecommended: {
     borderColor: colors.light.primary,
@@ -173,12 +180,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: 4,
     borderRadius: borderRadius.full,
-    zIndex: 1,
+    zIndex: 10,
   },
   recommendedText: {
-    fontSize: typography.xs,
+    fontSize: 10,
     fontWeight: '700',
     color: colors.light.primaryForeground,
+    textTransform: 'uppercase',
   },
   iconBox: {
     width: 56,
@@ -193,14 +201,14 @@ const styles = StyleSheet.create({
     fontSize: typography.xl,
     fontWeight: '700',
     color: colors.light.foreground,
-    marginBottom: spacing.xs,
+    marginBottom: 4,
   },
   description: {
-    fontSize: typography.sm,
+    fontSize: 13,
     color: colors.light.mutedForeground,
     marginBottom: spacing.lg,
     lineHeight: 18,
-    minHeight: 36, // Чтобы карточки были ровными по высоте описания
+    minHeight: 36,
   },
   priceContainer: {
     marginBottom: spacing.lg,
@@ -208,7 +216,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   freePrice: {
-    fontSize: typography['2xl'],
+    fontSize: 24,
     fontWeight: '700',
     color: colors.light.foreground,
   },
@@ -217,7 +225,7 @@ const styles = StyleSheet.create({
     alignItems: 'baseline',
   },
   currency: {
-    fontSize: typography.lg,
+    fontSize: 18,
     fontWeight: '600',
     color: colors.light.foreground,
     marginRight: 2,
@@ -229,7 +237,6 @@ const styles = StyleSheet.create({
   },
   featuresContainer: {
     marginBottom: spacing.xl,
-    gap: 2,
   },
   button: {
     backgroundColor: colors.light.primary,
@@ -246,7 +253,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.light.primary,
   },
   buttonText: {
-    fontSize: typography.base,
+    fontSize: 14,
     fontWeight: '600',
     color: colors.light.primaryForeground,
   },

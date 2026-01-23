@@ -39,9 +39,16 @@ export function BillingToggle({ value, onChange }: BillingToggleProps) {
               <Text style={[styles.optionText, isActive && styles.optionTextActive]}>
                 {option.label}
               </Text>
+
               {option.discount && (
-                <View style={[styles.discountBadge, isActive && styles.discountBadgeActive]}>
-                  <Text style={styles.discountText}>{option.discount}</Text>
+                <View
+                  style={[styles.discountBadge, isActive && styles.discountBadgeActive]}
+                >
+                  <Text
+                    style={[styles.discountText, isActive && styles.discountTextActive]}
+                  >
+                    {option.discount}
+                  </Text>
                 </View>
               )}
             </TouchableOpacity>
@@ -60,10 +67,10 @@ const styles = StyleSheet.create({
   },
   optionsRow: {
     flexDirection: 'row',
-    backgroundColor: colors.light.secondary, // Светло-серый фон как на скрине
+    backgroundColor: colors.light.secondary,
     borderRadius: borderRadius.lg,
     padding: 4,
-    height: 80, // Фиксированная высота для выравнивания
+    height: 64, // Оптимальная высота (было 80, слишком много, или 50 - мало)
   },
   option: {
     flex: 1,
@@ -71,38 +78,41 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: borderRadius.md,
-    gap: 4,
+    gap: 2,
   },
   optionActive: {
-    backgroundColor: colors.light.card, // Белый фон для активного
-    shadowColor: "#000",
+    backgroundColor: colors.light.card,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
     elevation: 2,
   },
   optionText: {
-    fontSize: typography.xs,
+    fontSize: 13, // Увеличил шрифт
     fontWeight: '500',
     color: colors.light.mutedForeground,
     textAlign: 'center',
   },
   optionTextActive: {
     color: colors.light.foreground,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   discountBadge: {
-    backgroundColor: colors.light.foreground, // Черный бейдж как на скрине
-    paddingHorizontal: 6,
-    paddingVertical: 2,
+    backgroundColor: 'transparent',
+    paddingHorizontal: 4,
+    paddingVertical: 1,
     borderRadius: borderRadius.full,
   },
   discountBadgeActive: {
-    backgroundColor: colors.light.foreground,
+    backgroundColor: colors.light.primary,
   },
   discountText: {
     fontSize: 10,
     fontWeight: '700',
-    color: colors.light.background, // Белый текст
+    color: colors.light.primary,
+  },
+  discountTextActive: {
+    color: colors.light.primaryForeground,
   },
 });

@@ -1,3 +1,4 @@
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -5,11 +6,11 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
+  StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, NavigationProp } from '@react-navigation/native';
-import { useState } from 'react';
+import { useNavigation } from '@react-navigation/native';
 
 import { colors, spacing, borderRadius, typography } from '../theme/colors';
 import CommunityCard from '../components/CommunityComponents/CommunityCard';
@@ -31,15 +32,8 @@ interface CommunityItem {
   isPrivate: boolean;
 }
 
-// Типы навигации
-type RootStackParamList = {
-  PostThread: { postId: string };
-  CommunityPosts: { communityId: string };
-  // ... другие экраны
-};
-
 // --------------------
-// Категории по умолчанию
+// Данные
 // --------------------
 const defaultCategories: CategoryItem[] = [
   { id: 'all', label: 'Все' },
@@ -50,122 +44,80 @@ const defaultCategories: CategoryItem[] = [
   { id: 'food', label: 'Еда' },
 ];
 
-export default function CommunitiesScreen() {
-  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
+const communities: CommunityItem[] = [
+  {
+    id: '1',
+    name: 'Музыкальные фестивали',
+    members: 1250,
+    category: 'Музыка',
+    description: 'Обсуждаем лучшие музыкальные мероприятия',
+    isPrivate: false,
+  },
+  {
+    id: '2',
+    name: 'Tech Talks',
+    members: 890,
+    category: 'Технологии',
+    description: 'ИТ-конференции и встречи разработчиков',
+    isPrivate: false,
+  },
+  {
+    id: '3',
+    name: 'Фотографы событий',
+    members: 450,
+    category: 'Фотография',
+    description: 'Советы по съемке мероприятий',
+    isPrivate: false,
+  },
+  {
+    id: '4',
+    name: 'Спортивные болельщики',
+    members: 2100,
+    category: 'Спорт',
+    description: 'Обсуждения матчей и турниров',
+    isPrivate: false,
+  },
+];
 
-  // --------------------
+export default function CommunitiesScreen() {
+  const navigation = useNavigation();
+
   // Состояние
-  // --------------------
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchValue, setSearchValue] = useState<string>('');
 
-  // --------------------
   // Обработчики
-  // --------------------
   function openPostThread(postId: string) {
-    navigation.navigate('PostThread', { postId });
+    navigation.navigate('PostThread' as never, { postId } as never);
   }
 
   function openCommunityPosts(communityId: string) {
-    // Альтернативно: можно открывать экран с постами сообщества
-    // navigation.navigate('CommunityPosts', { communityId });
-
-    // Пока открываем конкретный пост
+    // Для примера открываем тред
     openPostThread('sample-post-id');
   }
 
   function createCommunity() {
     console.log('Создание сообщества');
-    // navigation.navigate('CreateCommunity');
-  }
-
-  function handleSearchChange(text: string) {
-    setSearchValue(text);
-    console.log('Поиск:', text);
-  }
-
-  function handleCategorySelect(categoryId: string) {
-    setSelectedCategory(categoryId);
-    console.log('Выбрана категория:', categoryId);
   }
 
   function handleBackPress() {
     navigation.goBack();
   }
 
-  // --------------------
-  // Данные сообществ
-  // --------------------
-  const communities: CommunityItem[] = [
-    {
-      id: '1',
-      name: 'Музыкальные фестивали',
-      members: 1250,
-      category: 'Музыка',
-      description: 'Обсуждаем лучшие музыкальные мероприятия',
-      isPrivate: false,
-    },
-    {
-      id: '2',
-      name: 'Tech Talks',
-      members: 890,
-      category: 'Технологии',
-      description: 'ИТ-конференции и встречи разработчиков',
-      isPrivate: false,
-    },
-    {
-      id: '3',
-      name: 'Фотографы событий',
-      members: 450,
-      category: 'Фотография',
-      description: 'Советы по съемке мероприятий',
-      isPrivate: false,
-    },
-    {
-      id: '4',
-      name: 'Спортивные болельщики',
-      members: 2100,
-      category: 'Спорт',
-      description: 'Обсуждения матчей и турниров',
-      isPrivate: false,
-    },
-  ];
-
-  // --------------------
-  // Карточки сообществ
-  // --------------------
-  const communityCards = communities.map(function (community) {
-    function handlePress() {
-      openCommunityPosts(community.id);
-    }
-
-    return (
-      <CommunityCard
-        key={community.id}
-        id={community.id}
-        name={community.name}
-        members={community.members}
-        category={community.category}
-        description={community.description}
-        isPrivate={community.isPrivate}
-        onPress={handlePress}
-      />
-    );
-  });
-
-  // --------------------
-  // Рендер
-  // --------------------
   return (
     <SafeAreaView style={styles.fullContainer} edges={['top']}>
-      {/* Шапка как в SearchScreen */}
+      <StatusBar barStyle="dark-content" backgroundColor={colors.light.background} />
+
+      {/* --- СТАНДАРТИЗИРОВАННЫЙ ХЕДЕР --- */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
+        <TouchableOpacity style={styles.headerButtonLeft} onPress={handleBackPress}>
           <Ionicons name="arrow-back" size={24} color={colors.light.foreground} />
         </TouchableOpacity>
+
         <Text style={styles.headerTitle}>Сообщества</Text>
-        <TouchableOpacity style={styles.createButton} onPress={createCommunity}>
-          <Ionicons name="add" size={20} color={colors.light.primaryForeground} />
+
+        <TouchableOpacity style={styles.headerButtonRight} onPress={createCommunity}>
+          <Ionicons name="add" size={28} color={colors.light.primary} />
         </TouchableOpacity>
       </View>
 
@@ -182,7 +134,7 @@ export default function CommunitiesScreen() {
             placeholder="Поиск сообществ..."
             placeholderTextColor={colors.light.mutedForeground}
             value={searchValue}
-            onChangeText={handleSearchChange}
+            onChangeText={setSearchValue}
           />
         </View>
 
@@ -194,12 +146,11 @@ export default function CommunitiesScreen() {
         >
           {defaultCategories.map(function (category) {
             const isActive = selectedCategory === category.id;
-
             return (
               <TouchableOpacity
                 key={category.id}
                 style={[styles.categoryChip, isActive ? styles.categoryChipActive : null]}
-                onPress={() => handleCategorySelect(category.id)}
+                onPress={() => setSelectedCategory(category.id)}
               >
                 <Text
                   style={[
@@ -215,7 +166,20 @@ export default function CommunitiesScreen() {
         </ScrollView>
 
         {/* Сообщества */}
-        <View style={styles.communitiesGrid}>{communityCards}</View>
+        <View style={styles.communitiesGrid}>
+          {communities.map(community => (
+            <CommunityCard
+              key={community.id}
+              id={community.id}
+              name={community.name}
+              members={community.members}
+              category={community.category}
+              description={community.description}
+              isPrivate={community.isPrivate}
+              onPress={() => openCommunityPosts(community.id)}
+            />
+          ))}
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -229,13 +193,8 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.light.background,
   },
-  container: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingBottom: spacing['2xl'],
-  },
-  // Шапка как в SearchScreen
+
+  // --- ЕДИНЫЕ СТИЛИ ХЕДЕРА ---
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -244,23 +203,35 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: colors.light.border,
+    backgroundColor: colors.light.background,
+    minHeight: 56, // Фиксированная высота
   },
-  backButton: {
-    padding: spacing.xs,
+  headerButtonLeft: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+  },
+  headerButtonRight: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'flex-end',
   },
   headerTitle: {
+    flex: 1,
     fontSize: typography.xl,
     fontWeight: '700',
     color: colors.light.foreground,
     textAlign: 'center',
   },
-  createButton: {
-    width: 36,
-    height: 36,
-    borderRadius: borderRadius.full,
-    backgroundColor: colors.light.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
+  // ---------------------------
+
+  container: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: spacing['2xl'],
   },
   searchContainer: {
     flexDirection: 'row',

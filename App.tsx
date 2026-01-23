@@ -6,9 +6,10 @@ import { StatusBar } from 'expo-status-bar';
 
 // Screens
 import HomeScreen from './screens/HomeScreen';
-import AllEventsScreen from './screens/AllEventsScreen';
+// AllEventsScreen удален
 import EventDetailScreen from './screens/EventDetailScreen';
 import ProfileScreen from './screens/ProfileScreen';
+import EditProfileScreen from './screens/EditProfileScreen';
 import CommunitiesScreen from './screens/CommunitiesScreen';
 import SearchScreen from './screens/SearchScreen';
 import SettingsScreen from './screens/SettingsScreen';
@@ -85,6 +86,11 @@ function ProfileStackScreen() {
         options={{ headerShown: false }}
       />
       <Stack.Screen
+        name="EditProfile" // <-- Новый экран
+        component={EditProfileScreen}
+        options={{ headerShown: false }} // Мы используем свой хедер внутри экрана
+      />
+      <Stack.Screen
         name="Settings"
         component={SettingsScreen}
         options={{
@@ -142,7 +148,13 @@ function ProfileScreenWrapper({ navigation }: any) {
   }
 
   function editProfile() {
-    console.log('Редактирование профиля');
+    // Передаем текущие данные, чтобы они отобразились в полях ввода
+    navigation.navigate('EditProfile', {
+      initialName: 'Alex Johnson',
+      initialBio:
+        'Music lover, tech enthusiast, always looking for the next great event.',
+      initialEmail: 'alex@example.com',
+    });
   }
 
   function becomeOrganizer() {
@@ -233,15 +245,7 @@ export default function App() {
         <StatusBar style="dark" />
         <Stack.Navigator screenOptions={{ headerShown: false }}>
           <Stack.Screen name="MainTabs" component={TabNavigator} />
-          <Stack.Screen
-            name="AllEvents"
-            component={AllEventsScreen}
-            options={{
-              headerShown: true,
-              title: 'Все мероприятия',
-              headerBackTitle: 'Назад',
-            }}
-          />
+          {/* Экран AllEvents удален, так как мы используем SearchScreen */}
           <Stack.Screen
             name="EventDetail"
             component={EventDetailScreen}
