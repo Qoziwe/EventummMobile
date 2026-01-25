@@ -22,7 +22,7 @@ const customStorage: StateStorage = {
   removeItem: async (name: string): Promise<void> => {
     try {
       if (Platform.OS === 'web') localStorage.removeItem(name);
-      else await AsyncStorage.setItem(name, value);
+      else await AsyncStorage.removeItem(name); // Исправлено: был setItem и ошибка с переменной value
     } catch {}
   },
 };
@@ -34,9 +34,10 @@ export interface AppEvent extends DetailedEventItem {
 interface EventState {
   events: AppEvent[];
   addEvent: (event: AppEvent) => void;
-  updateEvent: (event: AppEvent) => void; // Добавлена функция обновления
+  updateEvent: (event: AppEvent) => void;
   deleteEvent: (id: string) => void;
   getEventById: (id: string) => AppEvent | undefined;
+  clearAllEvents: () => Promise<void>; // Новый метод
 }
 
 export const useEventStore = create<EventState>()(
@@ -64,6 +65,11 @@ export const useEventStore = create<EventState>()(
 
       getEventById: id => {
         return get().events.find(e => e.id === id);
+      },
+
+      clearAllEvents: async () => {
+        await useEventStore.persist.clearStorage();
+        set({ events: ALL_EVENTS });
       },
     }),
     {

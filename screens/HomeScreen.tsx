@@ -23,21 +23,51 @@ import EventCard from '../components/EventCard';
 
 // Импортируем сторы
 import { useEventStore } from '../store/eventStore';
+import { useUserStore } from '../store/userStore';
 import { COMMUNITIES, MOCK_POSTS } from '../data/communitiesMockData';
 
 export default function HomeScreen() {
   const navigation = useNavigation<any>();
-  const { events } = useEventStore(); // Получаем динамический список мероприятий
+  const { events } = useEventStore();
+  const { user } = useUserStore();
 
   const [activeFilters, setActiveFilters] = useState<Record<string, string>>({});
   const [visiblePopularCount, setVisiblePopularCount] = useState(8);
 
-  // Динамический расчет секции "Для вас"
+  // Динамический расчет секции "Для вас" на основе интересов пользователя
   const forYouEvents = useMemo(() => {
-    const special = events.filter(e => e.isForYou);
-    const regular = events.filter(e => !e.isForYou);
-    return special.concat(regular).slice(0, 20);
-  }, [events]);
+    // Если у пользователя нет интересов, показываем общий список рекомендаций
+    if (!user.interests || user.interests.length === 0) {
+      const special = events.filter(e => e.isForYou);
+      const regular = events.filter(e => !e.isForYou);
+      return special.concat(regular).slice(0, 20);
+    }
+
+    // Приводим интересы пользователя к нижнему регистру для сравнения
+    const userInterestsLower = user.interests.map(i => i.toLowerCase());
+
+    // Фильтруем события: оставляем только те, где хотя бы одна категория совпадает с интересами
+    const matched = events.filter(e => {
+      if (!e.categories || e.categories.length === 0) return false;
+      return e.categories.some(cat => userInterestsLower.includes(cat.toLowerCase()));
+    });
+
+    // Если совпадений совсем нет (например, на выбранную категорию нет ивентов),
+    // тогда показываем общие рекомендации, чтобы секция не была пустой.
+    // Но если совпадения есть — показываем ТОЛЬКО их.
+    if (matched.length === 0) {
+      return events.filter(e => e.isForYou || e.stats > 500).slice(0, 10);
+    }
+
+    // Сортируем: сначала те, что помечены как рекомендованные (isForYou), потом остальные подходящие
+    return matched
+      .sort((a, b) => {
+        if (a.isForYou && !b.isForYou) return -1;
+        if (!a.isForYou && b.isForYou) return 1;
+        return 0;
+      })
+      .slice(0, 20);
+  }, [events, user.interests]);
 
   // Динамический расчет секции "На следующей неделе"
   const nextWeekEvents = useMemo(() => {
@@ -112,16 +142,18 @@ export default function HomeScreen() {
           showApplyButton={true}
         />
 
-        <ForYouSection title="Для вас">
-          {forYouEvents.map((e, i) => (
-            <EventCard
-              key={`f-${e.id}-${i}`}
-              {...e}
-              onPress={() => navigation.navigate('EventDetail', { ...e })}
-              style={styles.horizontalCard}
-            />
-          ))}
-        </ForYouSection>
+        {forYouEvents.length > 0 && (
+          <ForYouSection title="Для вас">
+            {forYouEvents.map((e, i) => (
+              <EventCard
+                key={`f-${e.id}-${i}`}
+                {...e}
+                onPress={() => navigation.navigate('EventDetail', { ...e })}
+                style={styles.horizontalCard}
+              />
+            ))}
+          </ForYouSection>
+        )}
 
         <NextWeekFeed
           title="На следующей неделе"

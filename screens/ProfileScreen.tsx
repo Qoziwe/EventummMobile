@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { colors, spacing, borderRadius, typography } from '../theme/colors';
 import { useUserStore } from '../store/userStore';
+import { useEventStore } from '../store/eventStore'; // Добавлен импорт
 import { useToast } from '../components/ToastProvider';
 
 // Импорт новых компонентов списка
@@ -204,6 +205,7 @@ function ProfileSectionList({
 export default function ProfileScreen(props: ProfileScreenProps) {
   const navigation = useNavigation<any>();
   const { user, logout, clearAllData, becomeOrganizer } = useUserStore();
+  const { clearAllEvents } = useEventStore(); // Деструктуризация метода очистки событий
   const { showToast } = useToast();
 
   const [activeTab, setActiveTab] = useState<'tickets' | 'favorites'>(
@@ -283,18 +285,19 @@ export default function ProfileScreen(props: ProfileScreenProps) {
     }
   };
 
-  const handleSecretClear = () => {
-    const performClear = () => {
-      clearAllData();
+  const handleSecretClear = async () => {
+    const performClear = async () => {
+      await clearAllData();
+      await clearAllEvents(); // Теперь события тоже очищаются
       showToast({ message: 'Все данные успешно сброшены', type: 'success' });
     };
 
     if (Platform.OS === 'web') {
       if (window.confirm('Это удалит все локальные данные. Продолжить?')) {
-        performClear();
+        await performClear();
       }
     } else {
-      performClear();
+      await performClear();
     }
   };
 

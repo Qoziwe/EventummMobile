@@ -162,7 +162,7 @@ export default function OrganizerProfileScreen({
 }) {
   const navigation = useNavigation<any>();
   const { user, logout, clearAllData } = useUserStore();
-  const { events } = useEventStore();
+  const { events, clearAllEvents } = useEventStore();
   const { showToast } = useToast();
 
   // Аналитика
@@ -215,8 +215,9 @@ export default function OrganizerProfileScreen({
     showToast({ message: 'Вы вышли из аккаунта', type: 'info' });
   };
 
-  const handleSecretClear = () => {
-    clearAllData();
+  const handleSecretClear = async () => {
+    await clearAllData();
+    await clearAllEvents(); // Исправлено: теперь чистит и мероприятия
     showToast({ message: 'Данные сброшены', type: 'success' });
   };
 

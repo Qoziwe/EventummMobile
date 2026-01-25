@@ -27,11 +27,9 @@ export const ALL_EVENTS: DetailedEventItem[] = [
     stats: 1250,
     image:
       'https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?q=80&w=800&auto=format&fit=crop',
-    isPopular: true,
-    isForYou: true,
     addedAt: '2026-01-10',
     fullDescription:
-      'Главное музыкальное событие этой зимы! Группа "Звёзды" возвращается на сцену с новым альбомом и всеми любимыми хитами. Вас ждет невероятное световое шоу, живой звук и бешеная энергетика.',
+      'Главное музыкальное событие этой зимы! Группа "Звёзды" возвращается на сцену с новым альбомом и всеми любимыми хитами.',
     organizerName: 'Arena Live Group',
     organizerAvatar:
       'https://images.unsplash.com/photo-1560250097-0b93528c311a?q=80&w=200&auto=format&fit=crop',
@@ -53,10 +51,9 @@ export const ALL_EVENTS: DetailedEventItem[] = [
     stats: 320,
     image:
       'https://images.unsplash.com/photo-1460661419201-fd4cecdf8a8b?q=80&w=800&auto=format&fit=crop',
-    isForYou: true,
     addedAt: '2026-01-12',
     fullDescription:
-      'Погрузитесь в мир современного искусства на ежегодной выставке "Грани реальности". Более 50 работ от молодых художников Казахстана и СНГ. Живопись, инсталляции и цифровое искусство.',
+      'Погрузитесь в мир современного искусства на ежегодной выставке "Грани реальности".',
     organizerName: 'Almaty Art Foundation',
     organizerAvatar:
       'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?q=80&w=200&auto=format&fit=crop',
@@ -78,10 +75,8 @@ export const ALL_EVENTS: DetailedEventItem[] = [
     stats: 15000,
     image:
       'https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=800&auto=format&fit=crop',
-    isPopular: true,
     addedAt: '2026-01-15',
-    fullDescription:
-      'Главное дерби страны! "Кайрат" принимает столичную "Астану" в рамках чемпионата. Приходите поддержать любимую команду в этом захватывающем противостоянии.',
+    fullDescription: 'Главное дерби страны! "Кайрат" принимает столичную "Астану".',
     organizerName: 'Kairat FC',
     organizerAvatar:
       'https://images.unsplash.com/photo-1552664730-d307ca884978?q=80&w=200&auto=format&fit=crop',
@@ -105,7 +100,7 @@ export const ALL_EVENTS: DetailedEventItem[] = [
       'https://images.unsplash.com/photo-1452784444945-3f422708fe5e?q=80&w=800&auto=format&fit=crop',
     addedAt: '2026-01-14',
     fullDescription:
-      'Узнайте все секреты студийной съемки от профессионального фотографа. Разберем работу со светом, позирование и постобработку. Каждому участнику — практика с моделью.',
+      'Узнайте все секреты студийной съемки от профессионального фотографа.',
     organizerName: 'Focus Academy',
     organizerAvatar:
       'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=200&auto=format&fit=crop',
@@ -128,8 +123,7 @@ export const ALL_EVENTS: DetailedEventItem[] = [
     image:
       'https://images.unsplash.com/photo-1507676184212-d03ab07a01bf?q=80&w=800&auto=format&fit=crop',
     addedAt: '2026-01-11',
-    fullDescription:
-      'Вечная классика Уильяма Шекспира в современном прочтении. История любви, не знающая границ и времени, на сцене нашего театра.',
+    fullDescription: 'Вечная классика Уильяма Шекспира в современном прочтении.',
     organizerName: 'State Drama Theater',
     organizerAvatar:
       'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=200&auto=format&fit=crop',
@@ -151,10 +145,8 @@ export const ALL_EVENTS: DetailedEventItem[] = [
     stats: 450,
     image:
       'https://images.unsplash.com/photo-1556761175-b413da4baf72?q=80&w=800&auto=format&fit=crop',
-    isNextWeek: true,
     addedAt: '2026-01-14',
-    fullDescription:
-      'От идеи до первых инвестиций. Разберем основные этапы запуска технологического продукта на лекции от опытных предпринимателей и трекеров.',
+    fullDescription: 'От идеи до первых инвестиций. Основные этапы запуска продукта.',
     organizerName: 'Tech Hub Almaty',
     organizerAvatar:
       'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?q=80&w=200&auto=format&fit=crop',
@@ -176,10 +168,8 @@ export const ALL_EVENTS: DetailedEventItem[] = [
     stats: 1200,
     image:
       'https://images.unsplash.com/photo-1551735109-77bc97063d39?q=80&w=800&auto=format&fit=crop',
-    isNextWeek: true,
     addedAt: '2026-01-22',
-    fullDescription:
-      'Уникальный мастер-класс по живописи вином. Создайте свой шедевр под руководством профессионального художника в уютной атмосфере нашей студии. Все материалы включены.',
+    fullDescription: 'Мастер-класс по живописи вином в уютной атмосфере.',
     organizerName: 'Wine & Art Studio',
     organizerAvatar:
       'https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?q=80&w=200&auto=format&fit=crop',
@@ -201,10 +191,8 @@ export const ALL_EVENTS: DetailedEventItem[] = [
     stats: 2100,
     image:
       'https://images.unsplash.com/photo-1677442136019-21780ecad995?q=80&w=800&auto=format&fit=crop',
-    isNextWeek: true,
     addedAt: '2026-01-15',
-    fullDescription:
-      'Крупнейшая IT-конференция года в Алматы. Обсуждаем тренды в области искусственного интеллекта, машинного обучения и нейросетей. Спикеры из ведущих тех-компаний.',
+    fullDescription: 'Крупнейшая IT-конференция года в Алматы.',
     organizerName: 'AI Kazakhstan Community',
     organizerAvatar:
       'https://images.unsplash.com/photo-1552058544-f2b08422138a?q=80&w=200&auto=format&fit=crop',
@@ -226,10 +214,8 @@ export const ALL_EVENTS: DetailedEventItem[] = [
     stats: 3400,
     image:
       'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?q=80&w=800&auto=format&fit=crop',
-    isNextWeek: true,
     addedAt: '2026-01-22',
-    fullDescription:
-      'Ночь качественного техно от резидентов клуба. Только мощный бас, стробоскопы и полное погружение в ритм. Вход строго 21+.',
+    fullDescription: 'Ночь качественного техно и полного погружения.',
     organizerName: 'Object Club',
     organizerAvatar:
       'https://images.unsplash.com/photo-1514525253344-f81f1f74ec64?q=80&w=200&auto=format&fit=crop',
@@ -252,8 +238,7 @@ export const ALL_EVENTS: DetailedEventItem[] = [
     image:
       'https://images.unsplash.com/photo-1511192303578-4a7ec582c3b0?q=80&w=800&auto=format&fit=crop',
     addedAt: '2026-01-19',
-    fullDescription:
-      'Проведите незабываемый вечер в сопровождении джазового квартета и лучших сортов вина. Идеальное место для романтического свидания или спокойного отдыха.',
+    fullDescription: 'Джазовый вечер с вином в уютной атмосфере.',
     organizerName: 'EverJazz Club',
     organizerAvatar:
       'https://images.unsplash.com/photo-1511367461989-f85a21fda167?q=80&w=200&auto=format&fit=crop',
@@ -276,8 +261,7 @@ export const ALL_EVENTS: DetailedEventItem[] = [
     image:
       'https://images.unsplash.com/photo-1506126613408-eca07ce68773?q=80&w=800&auto=format&fit=crop',
     addedAt: '2026-01-22',
-    fullDescription:
-      'Начните утро бодро и осознанно! Бесплатная тренировка по хатха-йоге на свежем воздухе. Подходит для любого уровня подготовки. С собой нужно иметь коврик.',
+    fullDescription: 'Бесплатная тренировка по хатха-йоге на свежем воздухе.',
     organizerName: 'Yoga Family Almaty',
     organizerAvatar:
       'https://images.unsplash.com/photo-1517841905240-472988babdf9?q=80&w=200&auto=format&fit=crop',
@@ -300,8 +284,7 @@ export const ALL_EVENTS: DetailedEventItem[] = [
     image:
       'https://images.unsplash.com/photo-1467003909585-2f8a72700288?q=80&w=800&auto=format&fit=crop',
     addedAt: '2026-01-22',
-    fullDescription:
-      'Закрытый нетворкинг-ланч для фаундеров и инвесторов. Обсуждаем возможности рынка, делимся опытом и заводим полезные знакомства в неформальной обстановке.',
+    fullDescription: 'Закрытый нетворкинг-ланч для фаундеров и инвесторов.',
     organizerName: 'Invest Network KZ',
     organizerAvatar:
       'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=200&auto=format&fit=crop',
@@ -324,8 +307,7 @@ export const ALL_EVENTS: DetailedEventItem[] = [
     image:
       'https://images.unsplash.com/photo-1516280440614-37939bbacd81?q=80&w=800&auto=format&fit=crop',
     addedAt: '2026-01-21',
-    fullDescription:
-      'Лучшие и начинающие комики проверяют свои новые шутки. Смех, живое общение и отличные коктейли гарантированы.',
+    fullDescription: 'Открытый микрофон с лучшими и начинающими комиками.',
     organizerName: 'StandUp Almaty',
     organizerAvatar:
       'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?q=80&w=200&auto=format&fit=crop',
@@ -348,8 +330,7 @@ export const ALL_EVENTS: DetailedEventItem[] = [
     image:
       'https://images.unsplash.com/photo-1516627145497-ae6968895b74?q=80&w=800&auto=format&fit=crop',
     addedAt: '2026-01-20',
-    fullDescription:
-      'Магия ночного катания на самом высокогорном катке мира! Диджей-сеты, иллюминация и чистый горный воздух. Прокат коньков работает до полуночи.',
+    fullDescription: 'Ночное катание с музыкой и иллюминацией.',
     organizerName: 'Medeu Complex',
     organizerAvatar:
       'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=200&auto=format&fit=crop',
