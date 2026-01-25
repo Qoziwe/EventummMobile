@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useLayoutEffect, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,270 +6,757 @@ import {
   ScrollView,
   Image,
   TouchableOpacity,
+  StatusBar,
+  Dimensions,
+  Modal,
+  TextInput,
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, borderRadius, typography } from '../theme/colors';
+import { useUserStore } from '../store/userStore';
+import { useToast } from '../components/ToastProvider';
+
+const { width, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const PLACEHOLDER_IMAGE = 'https://via.placeholder.com/800x450?text=Event+Detail';
 
 export default function EventDetailScreen() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
   const route = useRoute<any>();
+  const { toggleFavorite, isFavorite, buyTicket, isPurchased, user } = useUserStore();
+  const { showToast } = useToast();
 
-  // Данные приходят из навигации (это объект EventItem из mockData)
-  const passedParams = route.params || {};
+  const [imageError, setImageError] = useState(false);
+  const [quantity, setQuantity] = useState(1);
+  const [showPayment, setShowPayment] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
-  // Дефолтные данные, если какое-то поле пустое в mockData
+  // Анимации
+  const modalAnim = useRef(new Animated.Value(0)).current;
+  const scrollY = useRef(new Animated.Value(0)).current;
+
+  // Данные карты
+  const [cardNumber, setCardNumber] = useState('');
+  const [expiry, setExpiry] = useState('');
+  const [cvv, setCvv] = useState('');
+
   const event = {
+    id: 'unknown',
     title: 'Название события',
     date: 'Скоро',
     location: 'Место проведения',
-    price: 'Бесплатно',
+    price: '0₸',
+    priceValue: 0,
     category: 'Событие',
-    description: 'Описание события скоро появится.',
-    organizer: 'Организатор',
-    timeRange: '19:00 - 22:00', // Можно добавить в mockData, если нужно
-    tags: ['событие'],
-    ...passedParams,
+    fullDescription: 'Описание события скоро появится.',
+    organizerName: 'Организатор',
+    organizerAvatar: 'https://via.placeholder.com/100',
+    organizerId: '',
+    timeRange: 'Время не указано',
+    ageLimit: 0,
+    vibe: 'chill',
+    tags: [],
+    ...route.params,
   };
 
-  const imageSource =
-    typeof event.image === 'string'
+  const isOrganizer = user.userType === 'organizer';
+  // Является ли текущий пользователь автором этого мероприятия
+  const isMine = user.id === event.organizerId;
+
+  useLayoutEffect(() => {
+    navigation.setOptions({ headerShown: false });
+  }, [navigation]);
+
+  useEffect(() => {
+    if (showPayment) {
+      Animated.timing(modalAnim, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [showPayment]);
+
+  const closePaymentModal = () => {
+    Animated.timing(modalAnim, {
+      toValue: 0,
+      duration: 300,
+      useNativeDriver: true,
+    }).start(() => {
+      setShowPayment(false);
+    });
+  };
+
+  const isFav = isFavorite(event.id);
+  const alreadyBought = isPurchased(event.id);
+
+  const handleToggleFavorite = () => {
+    if (isOrganizer) {
+      showToast({ message: 'Организаторы не могут добавлять в избранное', type: 'info' });
+      return;
+    }
+    toggleFavorite(event.id);
+    const currentlyFav = isFavorite(event.id);
+    showToast({
+      message: currentlyFav ? 'Добавлено в избранное' : 'Удалено из избранного',
+      type: 'info',
+    });
+  };
+
+  const handleProcessPayment = () => {
+    if (
+      event.priceValue > 0 &&
+      (cardNumber.length < 16 || expiry.length < 4 || cvv.length < 3)
+    ) {
+      showToast({
+        message: 'Пожалуйста, заполните все данные карты корректно.',
+        type: 'error',
+      });
+      return;
+    }
+
+    setIsProcessing(true);
+    setTimeout(() => {
+      buyTicket(event.id, quantity);
+      setIsProcessing(false);
+      Animated.timing(modalAnim, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }).start(() => {
+        setShowPayment(false);
+        showToast({
+          message: 'Билет приобретен и доступен в вашем профиле.',
+          type: 'success',
+        });
+        setTimeout(() => {
+          navigation.navigate('MainTabs', { screen: 'Profile' });
+        }, 1500);
+      });
+    }, 2000);
+  };
+
+  const imageSource = imageError
+    ? { uri: PLACEHOLDER_IMAGE }
+    : typeof event.image === 'string'
       ? { uri: event.image }
-      : event.image || { uri: 'https://via.placeholder.com/400x200' };
+      : event.image || { uri: PLACEHOLDER_IMAGE };
 
-  // Парсинг цены
-  const numericPrice =
-    typeof event.price === 'string'
-      ? event.price.toLowerCase() === 'бесплатно'
-        ? 0
-        : parseInt(event.price.replace(/[^0-9]/g, '')) || 0
-      : event.price;
+  const backdropOpacity = modalAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 1],
+  });
 
-  const [quantity, setQuantity] = useState(1);
-  const totalPrice = numericPrice * quantity;
+  const cardTranslateY = modalAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [SCREEN_HEIGHT * 0.8, 0],
+  });
+
+  const headerOpacity = scrollY.interpolate({
+    inputRange: [0, 200],
+    outputRange: [0, 1],
+    extrapolate: 'clamp',
+  });
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerButton}>
+    <View style={styles.fullContainer}>
+      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+
+      <Animated.View style={[styles.stickyHeader, { opacity: headerOpacity }]}>
+        <SafeAreaView edges={['top']}>
+          <View style={styles.stickyHeaderContent}>
+            <Text style={styles.stickyHeaderTitle} numberOfLines={1}>
+              {event.title}
+            </Text>
+          </View>
+        </SafeAreaView>
+      </Animated.View>
+
+      <SafeAreaView style={styles.headerActions} edges={['top']}>
+        <TouchableOpacity style={styles.circleBtn} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={24} color={colors.light.foreground} />
         </TouchableOpacity>
-      </View>
-
-      <ScrollView showsVerticalScrollIndicator={false}>
-        <Image source={imageSource} style={styles.eventImage} />
-
-        <View style={styles.content}>
-          <View style={styles.badges}>
-            <View style={[styles.badge, styles.categoryBadge]}>
-              <Text style={styles.categoryBadgeText}>{event.category}</Text>
-            </View>
-            <View style={[styles.badge, styles.outlineBadge]}>
-              <Ionicons
-                name="location-outline"
-                size={12}
-                color={colors.light.foreground}
-              />
-              <Text style={styles.outlineBadgeText}>{event.location}</Text>
-            </View>
-          </View>
-
-          <Text style={styles.title}>{event.title}</Text>
-
-          <View style={styles.infoSection}>
-            <InfoRow icon="calendar-outline" text={event.date} />
-            <InfoRow icon="location-outline" text={event.location} />
-            {event.timeRange && <InfoRow icon="time-outline" text={event.timeRange} />}
-          </View>
-
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>О мероприятии</Text>
-            <Text style={styles.description}>{event.description}</Text>
-          </View>
-
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Организатор</Text>
-            <View style={styles.organizerRow}>
-              <View style={styles.organizerAvatar}>
-                <Text style={styles.avatarText}>{event.organizer?.[0] || 'O'}</Text>
-              </View>
-              <View style={styles.organizerInfo}>
-                <Text style={styles.organizerName}>{event.organizer}</Text>
-                <Text style={styles.organizerRole}>Организатор</Text>
-              </View>
-            </View>
-          </View>
-        </View>
-      </ScrollView>
-
-      <View style={styles.purchaseSection}>
-        <View style={styles.priceInfo}>
-          <Text style={styles.priceLabel}>Цена билета</Text>
-          <Text style={styles.priceValue}>{event.price}</Text>
-        </View>
-
-        <View style={styles.quantitySection}>
-          <Text style={styles.quantityLabel}>Количество</Text>
-          <View style={styles.quantityControls}>
-            <TouchableOpacity
-              onPress={() => quantity > 1 && setQuantity(q => q - 1)}
-              style={styles.quantityButton}
-            >
-              <Ionicons name="remove" size={18} color={colors.light.foreground} />
-            </TouchableOpacity>
-            <Text style={styles.quantityValue}>{quantity}</Text>
-            <TouchableOpacity
-              onPress={() => setQuantity(q => q + 1)}
-              style={styles.quantityButton}
-            >
-              <Ionicons name="add" size={18} color={colors.light.foreground} />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        <TouchableOpacity style={styles.buyButton}>
-          <Text style={styles.buyButtonText}>
-            {numericPrice === 0
-              ? 'Зарегистрироваться'
-              : `Купить за ${totalPrice.toLocaleString()} ₸`}
-          </Text>
+        <TouchableOpacity style={styles.circleBtn} onPress={handleToggleFavorite}>
+          <Ionicons
+            name={isFav ? 'heart' : 'heart-outline'}
+            size={24}
+            color={isFav ? '#E91E63' : colors.light.foreground}
+          />
         </TouchableOpacity>
+      </SafeAreaView>
+
+      <Animated.ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+        onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], {
+          useNativeDriver: true,
+        })}
+        scrollEventThrottle={16}
+      >
+        <View style={styles.imageWrapper}>
+          <Image
+            source={imageSource}
+            style={styles.eventImage}
+            onError={() => setImageError(true)}
+          />
+          <View style={styles.imageOverlay} />
+        </View>
+
+        <View style={styles.mainContent}>
+          <View style={styles.badgeRow}>
+            <View
+              style={[styles.badge, { backgroundColor: colors.light.primary + '15' }]}
+            >
+              <Text style={[styles.badgeText, { color: colors.light.primary }]}>
+                {event.category || 'Событие'}
+              </Text>
+            </View>
+            <View style={[styles.badge, { backgroundColor: colors.light.accent + '15' }]}>
+              <Text style={[styles.badgeText, { color: colors.light.accent }]}>
+                {event.vibe}
+              </Text>
+            </View>
+            {event.ageLimit > 0 && (
+              <View style={[styles.badge, { backgroundColor: colors.light.secondary }]}>
+                <Text style={styles.badgeText}>{event.ageLimit}+</Text>
+              </View>
+            )}
+          </View>
+
+          <Text style={styles.eventTitle}>{event.title}</Text>
+
+          <TouchableOpacity
+            style={styles.organizerCard}
+            onPress={() => navigation.navigate('OrganizerProfile', { id: event.id })}
+          >
+            <Image
+              source={{ uri: event.organizerAvatar }}
+              style={styles.organizerAvatar}
+            />
+            <View style={styles.organizerInfo}>
+              <Text style={styles.organizerLabel}>Организатор</Text>
+              <Text style={styles.organizerName}>{event.organizerName}</Text>
+            </View>
+            <Ionicons
+              name="chevron-forward"
+              size={20}
+              color={colors.light.mutedForeground}
+            />
+          </TouchableOpacity>
+
+          <View style={styles.infoGrid}>
+            <InfoBox icon="calendar" title="Дата" value={event.date} />
+            <InfoBox icon="time" title="Время" value={event.timeRange} />
+          </View>
+
+          <TouchableOpacity style={styles.locationCard}>
+            <View style={styles.locationIconBg}>
+              <Ionicons name="location" size={24} color={colors.light.primary} />
+            </View>
+            <View style={styles.locationInfo}>
+              <Text style={styles.infoLabel}>Место проведения</Text>
+              <Text style={styles.infoValue}>{event.location}</Text>
+            </View>
+          </TouchableOpacity>
+
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Описание</Text>
+            <Text style={styles.descriptionText}>{event.fullDescription}</Text>
+          </View>
+
+          {event.tags && event.tags.length > 0 && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Метки</Text>
+              <View style={styles.tagsContainer}>
+                {event.tags.map((tag: string, index: number) => (
+                  <View key={index} style={styles.tag}>
+                    <Text style={styles.tagText}>#{tag}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
+        </View>
+      </Animated.ScrollView>
+
+      <View style={styles.bottomBar}>
+        {isMine ? (
+          <TouchableOpacity
+            style={[
+              styles.buyButton,
+              { flex: 1, backgroundColor: colors.light.foreground },
+            ]}
+            onPress={() => navigation.navigate('CreateEvent', { event })}
+          >
+            <Ionicons
+              name="create-outline"
+              size={20}
+              color={colors.light.primaryForeground}
+            />
+            <Text style={styles.buyButtonText}>Редактировать</Text>
+          </TouchableOpacity>
+        ) : isOrganizer ? (
+          <View style={styles.organizerNotice}>
+            <Ionicons
+              name="information-circle-outline"
+              size={20}
+              color={colors.light.mutedForeground}
+            />
+            <Text style={styles.organizerNoticeText}>Режим организатора</Text>
+          </View>
+        ) : alreadyBought ? (
+          <TouchableOpacity
+            style={[styles.buyButton, { flex: 1 }]}
+            onPress={() => navigation.navigate('TicketDetail', { event })}
+          >
+            <Ionicons
+              name="qr-code-outline"
+              size={20}
+              color={colors.light.primaryForeground}
+            />
+            <Text style={styles.buyButtonText}>Показать билет</Text>
+          </TouchableOpacity>
+        ) : (
+          <>
+            <View style={styles.priceContainer}>
+              <Text style={styles.priceLabel}>Итоговая цена</Text>
+              <Text style={styles.totalPrice}>
+                {event.priceValue === 0
+                  ? 'Бесплатно'
+                  : `${(event.priceValue * quantity).toLocaleString()} ₸`}
+              </Text>
+            </View>
+            <View style={styles.buyActions}>
+              {event.priceValue > 0 && (
+                <View style={styles.quantityPicker}>
+                  <TouchableOpacity
+                    onPress={() => quantity > 1 && setQuantity(q => q - 1)}
+                    style={styles.qBtn}
+                  >
+                    <Ionicons name="remove" size={18} color={colors.light.foreground} />
+                  </TouchableOpacity>
+                  <Text style={styles.qText}>{quantity}</Text>
+                  <TouchableOpacity
+                    onPress={() => setQuantity(q => q + 1)}
+                    style={styles.qBtn}
+                  >
+                    <Ionicons name="add" size={18} color={colors.light.foreground} />
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              <TouchableOpacity
+                style={styles.buyButton}
+                onPress={() => setShowPayment(true)}
+              >
+                <Text style={styles.buyButtonText}>
+                  {event.priceValue === 0 ? 'Участвовать' : 'Купить'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </>
+        )}
       </View>
-    </SafeAreaView>
+
+      <Modal
+        visible={showPayment}
+        animationType="none"
+        transparent={true}
+        onRequestClose={closePaymentModal}
+      >
+        <View style={styles.modalRoot}>
+          <Animated.View style={[styles.backdrop, { opacity: backdropOpacity }]}>
+            <TouchableOpacity
+              style={styles.flex}
+              activeOpacity={1}
+              onPress={closePaymentModal}
+            />
+          </Animated.View>
+
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.keyboardView}
+          >
+            <Animated.View
+              style={[
+                styles.paymentCard,
+                { transform: [{ translateY: cardTranslateY }] },
+              ]}
+            >
+              <View style={styles.paymentHeader}>
+                <Text style={styles.paymentTitle}>Оформление</Text>
+                <TouchableOpacity onPress={closePaymentModal}>
+                  <Ionicons name="close" size={28} color={colors.light.foreground} />
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView showsVerticalScrollIndicator={false}>
+                <View style={styles.paymentSummary}>
+                  <Text style={styles.summaryText}>{event.title}</Text>
+                  <Text style={styles.summaryPrice}>
+                    {quantity} шт. — {(event.priceValue * quantity).toLocaleString()} ₸
+                  </Text>
+                </View>
+
+                {event.priceValue > 0 && (
+                  <View style={styles.cardInputContainer}>
+                    <Text style={styles.inputLabel}>Номер карты</Text>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="0000 0000 0000 0000"
+                      keyboardType="numeric"
+                      maxLength={16}
+                      value={cardNumber}
+                      onChangeText={setCardNumber}
+                    />
+                    <View style={styles.row}>
+                      <View style={{ flex: 1, marginRight: 12 }}>
+                        <Text style={styles.inputLabel}>ММ/ГГ</Text>
+                        <TextInput
+                          style={styles.input}
+                          placeholder="12/26"
+                          keyboardType="numeric"
+                          maxLength={5}
+                          value={expiry}
+                          onChangeText={setExpiry}
+                        />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.inputLabel}>CVV</Text>
+                        <TextInput
+                          style={styles.input}
+                          placeholder="***"
+                          keyboardType="numeric"
+                          maxLength={3}
+                          secureTextEntry
+                          value={cvv}
+                          onChangeText={setCvv}
+                        />
+                      </View>
+                    </View>
+                  </View>
+                )}
+
+                <TouchableOpacity
+                  style={[styles.payConfirmBtn, isProcessing && { opacity: 0.7 }]}
+                  onPress={handleProcessPayment}
+                  disabled={isProcessing}
+                >
+                  {isProcessing ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text style={styles.payConfirmBtnText}>
+                      {event.priceValue === 0 ? 'Подтвердить участие' : 'Оплатить'}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              </ScrollView>
+            </Animated.View>
+          </KeyboardAvoidingView>
+        </View>
+      </Modal>
+    </View>
   );
 }
 
-function InfoRow({ icon, text }: { icon: any; text: string }) {
+function InfoBox({ icon, title, value }: { icon: any; title: string; value: string }) {
   return (
-    <View style={styles.infoRow}>
-      <Ionicons name={icon} size={18} color={colors.light.mutedForeground} />
-      <Text style={styles.infoText}>{text}</Text>
+    <View style={styles.infoBox}>
+      <Ionicons name={`${icon}-outline`} size={18} color={colors.light.primary} />
+      <View style={{ marginLeft: 8 }}>
+        <Text style={styles.infoLabelSmall}>{title}</Text>
+        <Text style={styles.infoValueSmall}>{value}</Text>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.light.background },
-  header: {
-    flexDirection: 'row',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
+  fullContainer: { flex: 1, backgroundColor: colors.light.background },
+  stickyHeader: {
     position: 'absolute',
-    top: 44,
+    top: 0,
     left: 0,
+    right: 0,
     zIndex: 10,
+    backgroundColor: colors.light.background,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.light.border,
   },
-  headerButton: {
-    width: 40,
-    height: 40,
-    borderRadius: borderRadius.full,
-    backgroundColor: 'rgba(255,255,255,0.9)',
+  stickyHeaderContent: {
+    height: 56,
     alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: 60,
   },
-  eventImage: { width: '100%', height: 280 },
-  content: { padding: spacing.lg, gap: spacing.lg },
-  badges: { flexDirection: 'row', gap: spacing.sm },
-  badge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: borderRadius.md,
-  },
-  categoryBadge: { backgroundColor: `${colors.light.primary}20` },
-  categoryBadgeText: {
-    fontSize: typography.xs,
-    fontWeight: '600',
-    color: colors.light.primary,
-  },
-  outlineBadge: { borderWidth: 1, borderColor: colors.light.border },
-  outlineBadgeText: { fontSize: typography.xs, color: colors.light.foreground },
-  title: {
-    fontSize: typography['2xl'],
+  stickyHeaderTitle: {
+    fontSize: 16,
     fontWeight: '700',
     color: colors.light.foreground,
   },
-  infoSection: { gap: spacing.sm },
-  infoRow: { flexDirection: 'row', gap: spacing.sm, alignItems: 'center' },
-  infoText: { fontSize: typography.base, color: colors.light.mutedForeground },
-  card: {
-    backgroundColor: colors.light.card,
-    borderRadius: borderRadius.xl,
+  headerActions: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 11,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.lg,
+    paddingTop: Platform.OS === 'android' ? 40 : 10,
+  },
+  circleBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+  },
+  scrollContent: { paddingBottom: 140 },
+  imageWrapper: { width: width, height: 380, position: 'relative' },
+  eventImage: { width: '100%', height: '100%', resizeMode: 'cover' },
+  imageOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.15)',
+  },
+  mainContent: {
+    marginTop: -30,
+    backgroundColor: colors.light.background,
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
     padding: spacing.lg,
+  },
+  badgeRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: spacing.md,
+  },
+  badge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: colors.light.secondary,
+  },
+  badgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+  },
+  eventTitle: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: colors.light.foreground,
+    lineHeight: 34,
+    marginBottom: spacing.lg,
+  },
+  organizerCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.light.card,
+    padding: spacing.md,
+    borderRadius: borderRadius.xl,
+    marginBottom: spacing.xl,
     borderWidth: 1,
     borderColor: colors.light.border,
   },
-  cardTitle: {
-    fontSize: typography.lg,
-    fontWeight: '600',
-    color: colors.light.foreground,
-    marginBottom: spacing.md,
-  },
-  description: { fontSize: typography.base, color: colors.light.mutedForeground },
-  organizerRow: { flexDirection: 'row', gap: spacing.md, alignItems: 'center' },
   organizerAvatar: {
-    width: 50,
-    height: 50,
-    borderRadius: borderRadius.full,
-    backgroundColor: colors.light.secondary,
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    marginRight: 12,
   },
-  avatarText: { fontSize: typography.xl, fontWeight: '600' },
   organizerInfo: { flex: 1 },
-  organizerName: { fontSize: typography.lg, fontWeight: '600' },
-  organizerRole: { fontSize: typography.sm, color: colors.light.mutedForeground },
-  purchaseSection: {
+  organizerLabel: { fontSize: 11, color: colors.light.mutedForeground, marginBottom: 2 },
+  organizerName: { fontSize: 15, fontWeight: '700', color: colors.light.foreground },
+  infoGrid: { flexDirection: 'row', gap: 12, marginBottom: 12 },
+  infoBox: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.light.card,
+    padding: 12,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    borderColor: colors.light.border,
+  },
+  infoLabelSmall: {
+    fontSize: 10,
+    color: colors.light.mutedForeground,
+    textTransform: 'uppercase',
+  },
+  infoValueSmall: { fontSize: 13, fontWeight: '700', color: colors.light.foreground },
+  locationCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: colors.light.card,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    borderColor: colors.light.border,
+    marginBottom: spacing.xl,
+  },
+  locationIconBg: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: colors.light.primary + '10',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  locationInfo: { flex: 1 },
+  infoLabel: {
+    fontSize: 11,
+    color: colors.light.mutedForeground,
+    textTransform: 'uppercase',
+    marginBottom: 2,
+  },
+  infoValue: { fontSize: 14, fontWeight: '700', color: colors.light.foreground },
+  section: { marginBottom: spacing.xl },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: colors.light.foreground,
+    marginBottom: spacing.sm,
+  },
+  descriptionText: {
+    fontSize: 15,
+    color: colors.light.mutedForeground,
+    lineHeight: 24,
+  },
+  tagsContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  tag: {
+    backgroundColor: colors.light.secondary,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  tagText: { fontSize: 13, color: colors.light.foreground, fontWeight: '600' },
+  bottomBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: colors.light.card,
     padding: spacing.lg,
+    paddingBottom: Platform.OS === 'ios' ? 34 : spacing.lg,
     borderTopWidth: 1,
     borderTopColor: colors.light.border,
-    backgroundColor: colors.light.card,
-    gap: spacing.md,
-  },
-  priceInfo: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-  },
-  priceLabel: { fontSize: typography.base, color: colors.light.mutedForeground },
-  priceValue: { fontSize: typography.xl, fontWeight: '700' },
-  quantitySection: {
-    flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
   },
-  quantityLabel: { fontSize: typography.base },
-  quantityControls: {
+  priceContainer: { flex: 1 },
+  priceLabel: { fontSize: 11, color: colors.light.mutedForeground },
+  totalPrice: { fontSize: 20, fontWeight: '800', color: colors.light.foreground },
+  buyActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  quantityPicker: {
     flexDirection: 'row',
-    backgroundColor: colors.light.muted,
-    borderRadius: borderRadius.lg,
+    alignItems: 'center',
+    backgroundColor: colors.light.secondary,
+    borderRadius: borderRadius.md,
     padding: 4,
   },
-  quantityButton: {
-    width: 32,
-    height: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  quantityValue: {
-    fontSize: typography.lg,
-    fontWeight: '600',
-    minWidth: 30,
-    textAlign: 'center',
-    paddingTop: 4,
-  },
+  qBtn: { width: 32, height: 32, justifyContent: 'center', alignItems: 'center' },
+  qText: { fontSize: 16, fontWeight: '700', minWidth: 24, textAlign: 'center' },
   buyButton: {
     backgroundColor: colors.light.primary,
-    paddingVertical: spacing.lg,
-    borderRadius: borderRadius.lg,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: 14,
+    borderRadius: borderRadius.xl,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    minWidth: 120,
   },
   buyButtonText: {
-    fontSize: typography.base,
-    fontWeight: '600',
     color: colors.light.primaryForeground,
+    fontWeight: '700',
+    fontSize: 16,
   },
+  organizerNotice: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    justifyContent: 'center',
+  },
+  organizerNoticeText: {
+    fontSize: 14,
+    color: colors.light.mutedForeground,
+    fontWeight: '700',
+  },
+  modalRoot: { flex: 1, justifyContent: 'flex-end' },
+  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.6)' },
+  keyboardView: { justifyContent: 'flex-end' },
+  flex: { flex: 1 },
+  paymentCard: {
+    backgroundColor: colors.light.background,
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    padding: 24,
+    maxHeight: SCREEN_HEIGHT * 0.8,
+  },
+  paymentHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  paymentTitle: { fontSize: 22, fontWeight: '800', color: colors.light.foreground },
+  paymentSummary: {
+    padding: 20,
+    backgroundColor: colors.light.secondary,
+    borderRadius: 16,
+    marginBottom: 24,
+  },
+  summaryText: {
+    fontWeight: '700',
+    fontSize: 16,
+    color: colors.light.foreground,
+    marginBottom: 4,
+  },
+  summaryPrice: { color: colors.light.primary, fontWeight: '800', fontSize: 18 },
+  cardInputContainer: { gap: 16, marginBottom: 32 },
+  inputLabel: {
+    fontSize: 12,
+    color: colors.light.mutedForeground,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    marginLeft: 4,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: colors.light.border,
+    borderRadius: 14,
+    padding: 16,
+    fontSize: 16,
+    backgroundColor: colors.light.card,
+  },
+  row: { flexDirection: 'row' },
+  payConfirmBtn: {
+    backgroundColor: colors.light.primary,
+    padding: 20,
+    borderRadius: 18,
+    alignItems: 'center',
+    shadowColor: colors.light.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  payConfirmBtnText: { color: '#fff', fontWeight: '800', fontSize: 18 },
 });

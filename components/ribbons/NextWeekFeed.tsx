@@ -9,7 +9,7 @@ interface NextWeekFeedProps {
   subtitle?: string;
   onScrollLeft?: () => void;
   onScrollRight?: () => void;
-  events: EventItem[]; // Стандартизированный тип
+  events: EventItem[];
   onEventPress?: (event: EventItem) => void;
 }
 

@@ -6,15 +6,26 @@ import { StatusBar } from 'expo-status-bar';
 
 // Screens
 import HomeScreen from './screens/HomeScreen';
-// AllEventsScreen удален
 import EventDetailScreen from './screens/EventDetailScreen';
 import ProfileScreen from './screens/ProfileScreen';
+import OrganizerProfileScreen from './screens/OrganizerProfileScreen';
 import EditProfileScreen from './screens/EditProfileScreen';
+import CreateEventScreen from './screens/CreateEventScreen'; // Добавлено
 import CommunitiesScreen from './screens/CommunitiesScreen';
 import SearchScreen from './screens/SearchScreen';
 import SettingsScreen from './screens/SettingsScreen';
 import PostThreadScreen from './screens/PostThreadScreen';
 import { SubscriptionsScreen } from './screens/SubscriptionScreen';
+import TicketDetailScreen from './screens/TicketDetailScreen';
+import AuthScreen from './screens/AuthScreen';
+import SavedEventsScreen from './screens/SavedEventsScreen';
+
+// Combined Toast System
+import { ToastProvider } from './components/ToastProvider';
+
+// Stores
+import { useUserStore } from './store/userStore';
+import { useEventStore } from './store/eventStore'; // Добавлено для инициализации
 
 // Icons component
 import { Ionicons } from '@expo/vector-icons';
@@ -22,9 +33,6 @@ import { Ionicons } from '@expo/vector-icons';
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
-// --------------------
-// Компонент TabNavigator
-// --------------------
 function TabNavigator() {
   return (
     <Tab.Navigator
@@ -74,9 +82,6 @@ function TabNavigator() {
   );
 }
 
-// --------------------
-// Стек для экрана профиля с настройками
-// --------------------
 function ProfileStackScreen() {
   return (
     <Stack.Navigator>
@@ -86,9 +91,9 @@ function ProfileStackScreen() {
         options={{ headerShown: false }}
       />
       <Stack.Screen
-        name="EditProfile" // <-- Новый экран
+        name="EditProfile"
         component={EditProfileScreen}
-        options={{ headerShown: false }} // Мы используем свой хедер внутри экрана
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="Settings"
@@ -106,19 +111,35 @@ function ProfileStackScreen() {
           headerBackTitle: 'Назад',
         }}
       />
+      <Stack.Screen
+        name="TicketDetail"
+        component={TicketDetailScreen}
+        options={{ headerShown: false }}
+      />
     </Stack.Navigator>
   );
 }
 
-// --------------------
-// Обертка для ProfileScreen с передачей обработчиков
-// --------------------
 function ProfileScreenWrapper({ navigation }: any) {
-  // --------------------
-  // Обработчики для ProfileScreen
-  // --------------------
+  const { user } = useUserStore();
+
   function openSettings() {
     navigation.navigate('Settings');
+  }
+
+  function openSubscriptions() {
+    navigation.navigate('Subscriptions');
+  }
+
+  function editProfile() {
+    navigation.navigate('EditProfile', {
+      initialName: user.name,
+      initialBio: user.bio,
+      initialEmail: user.email,
+      initialPhone: user.phone,
+      initialLocation: user.location,
+      initialInterests: user.interests,
+    });
   }
 
   function handleSectionPress(sectionId: string) {
@@ -129,143 +150,84 @@ function ProfileScreenWrapper({ navigation }: any) {
       case 'subscriptions':
         openSubscriptions();
         break;
-      case 'saved_events':
-        console.log('Открыть сохраненные события');
-        break;
-      case 'my_communities':
-        console.log('Открыть мои сообщества');
-        break;
-      case 'my_posts':
-        console.log('Открыть мои посты');
-        break;
       default:
         console.log('Секция:', sectionId);
     }
   }
 
-  function openSubscriptions() {
-    navigation.navigate('Subscriptions');
+  if (user.userType === 'organizer') {
+    return <OrganizerProfileScreen onSettings={openSettings} onEdit={editProfile} />;
   }
 
-  function editProfile() {
-    // Передаем текущие данные, чтобы они отобразились в полях ввода
-    navigation.navigate('EditProfile', {
-      initialName: 'Alex Johnson',
-      initialBio:
-        'Music lover, tech enthusiast, always looking for the next great event.',
-      initialEmail: 'alex@example.com',
-    });
-  }
-
-  function becomeOrganizer() {
-    console.log('Стать организатором');
-  }
-
-  function exploreEvents() {
-    console.log('Поиск мероприятий');
-  }
-
-  function handleTabChange(tab: 'tickets' | 'favorites') {
-    console.log('Смена таба на:', tab);
-  }
-
-  // --------------------
-  // Данные для профиля
-  // --------------------
-  const userData = {
-    avatarInitials: 'AJ',
-    name: 'Alex Johnson',
-    email: 'alex@example.com',
-    role: 'Пользователь',
-    subscriptionType: 'Premium',
-    subscriptionStatus: 'premium' as const,
-    bio: 'Music lover, tech enthusiast, always looking for the next great event.',
-    eventsAttended: 24,
-    eventsSaved: 12,
-    communitiesJoined: 5,
-    hasTickets: false,
-  };
-
-  // --------------------
-  // Рендер ProfileScreen
-  // --------------------
   return (
     <ProfileScreen
-      avatarInitials={userData.avatarInitials}
-      name={userData.name}
-      email={userData.email}
-      role={userData.role}
-      subscriptionType={userData.subscriptionType}
-      subscriptionStatus={userData.subscriptionStatus}
-      bio={userData.bio}
-      eventsAttended={userData.eventsAttended}
-      eventsSaved={userData.eventsSaved}
-      communitiesJoined={userData.communitiesJoined}
       onSettings={openSettings}
       onEdit={editProfile}
-      onBecomeOrganizer={becomeOrganizer}
-      onExplore={exploreEvents}
       onSectionPress={handleSectionPress}
       onSubscriptionPress={openSubscriptions}
-      onTabChange={handleTabChange}
-      hasTickets={userData.hasTickets}
     />
   );
 }
 
-// --------------------
-// Обертка для PostThreadScreen
-// --------------------
 function PostThreadScreenWrapper({ navigation, route }: any) {
-  function handleBack() {
-    navigation.goBack();
-  }
-
-  function handleSubmitComment(content: string, hasMedia: boolean, hasLink: boolean) {
-    console.log('Новый комментарий:', content);
-    // Логика отправки комментария на сервер
-  }
-
   return (
     <PostThreadScreen
       postId={route.params?.postId}
-      onBack={handleBack}
-      onSubmitComment={handleSubmitComment}
+      onBack={() => navigation.goBack()}
+      onSubmitComment={content => console.log('Новый комментарий:', content)}
     />
   );
 }
 
-// --------------------
-// Основной компонент App
-// --------------------
 export default function App() {
+  const { isAuthenticated } = useUserStore();
+
   return (
     <SafeAreaProvider>
-      <NavigationContainer>
-        <StatusBar style="dark" />
-        <Stack.Navigator screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="MainTabs" component={TabNavigator} />
-          {/* Экран AllEvents удален, так как мы используем SearchScreen */}
-          <Stack.Screen
-            name="EventDetail"
-            component={EventDetailScreen}
-            options={{
-              headerShown: true,
-              title: 'Детали мероприятия',
-              headerBackTitle: 'Назад',
-            }}
-          />
-          <Stack.Screen
-            name="PostThread"
-            component={PostThreadScreenWrapper}
-            options={{
-              headerShown: true,
-              title: 'Обсуждение',
-              headerBackTitle: 'Назад',
-            }}
-          />
-        </Stack.Navigator>
-      </NavigationContainer>
+      <ToastProvider>
+        <NavigationContainer>
+          <StatusBar style="dark" />
+          <Stack.Navigator screenOptions={{ headerShown: false }}>
+            {!isAuthenticated ? (
+              <Stack.Screen name="Auth" component={AuthScreen} />
+            ) : (
+              <>
+                <Stack.Screen name="MainTabs" component={TabNavigator} />
+                <Stack.Screen
+                  name="EventDetail"
+                  component={EventDetailScreen}
+                  options={{
+                    headerShown: true,
+                    title: 'Детали мероприятия',
+                    headerBackTitle: 'Назад',
+                  }}
+                />
+                <Stack.Screen name="TicketDetail" component={TicketDetailScreen} />
+                <Stack.Screen name="CreateEvent" component={CreateEventScreen} />
+                <Stack.Screen
+                  name="PostThread"
+                  component={PostThreadScreenWrapper}
+                  options={{
+                    headerShown: true,
+                    title: 'Обсуждение',
+                    headerBackTitle: 'Назад',
+                  }}
+                />
+                <Stack.Screen
+                  name="SavedEvents"
+                  component={SavedEventsScreen}
+                  options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                  name="OrganizerProfile"
+                  component={OrganizerProfileScreen}
+                  options={{ headerShown: false }}
+                />
+              </>
+            )}
+          </Stack.Navigator>
+        </NavigationContainer>
+      </ToastProvider>
     </SafeAreaProvider>
   );
 }

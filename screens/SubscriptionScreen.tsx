@@ -13,14 +13,12 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { colors, spacing, borderRadius, typography } from '../theme/colors';
 
-// Импорт компонентов
 import {
   BillingToggle,
   type BillingPeriod,
 } from '../components/SubsComponents/BillingToggle';
 import { PlanCard, type Plan } from '../components/SubsComponents/PlanCard';
 
-// Данные планов (БЕЗ ЭМОДЗИ, с iconType)
 const PLANS: Plan[] = [
   {
     id: 'free',
@@ -74,7 +72,6 @@ const PLANS: Plan[] = [
 
 const CURRENT_PLAN_ID = 'free';
 
-// !!! ИСПОЛЬЗУЕМ export function (как в рабочем варианте)
 export function SubscriptionsScreen() {
   const navigation = useNavigation();
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>('1month');
@@ -91,15 +88,16 @@ export function SubscriptionsScreen() {
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.light.background} />
 
-      {/* --- СТАНДАРТИЗИРОВАННЫЙ ХЕДЕР --- */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.headerButtonLeft} onPress={() => navigation.goBack()}>
+        <TouchableOpacity
+          style={styles.headerButtonLeft}
+          onPress={() => navigation.goBack()}
+        >
           <Ionicons name="arrow-back" size={24} color={colors.light.foreground} />
         </TouchableOpacity>
-        
+
         <Text style={styles.headerTitle}>Подписки</Text>
-        
-        {/* Пустой блок справа для центрирования */}
+
         <View style={styles.headerButtonRight} />
       </View>
 
@@ -122,7 +120,7 @@ export function SubscriptionsScreen() {
               horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.plansContainer}
-              snapToInterval={300 + spacing.md} 
+              snapToInterval={300 + spacing.md}
               decelerationRate="fast"
             >
               {PLANS.map(plan => (
@@ -139,12 +137,17 @@ export function SubscriptionsScreen() {
 
           <View style={styles.infoCard}>
             <View style={styles.infoIcon}>
-              <Ionicons name="information-circle" size={24} color={colors.light.primary} />
+              <Ionicons
+                name="information-circle"
+                size={24}
+                color={colors.light.primary}
+              />
             </View>
             <View style={styles.infoContent}>
               <Text style={styles.infoTitle}>Как работает подписка</Text>
               <Text style={styles.infoText}>
-                Подписка продлевается автоматически. Отменить можно в любой момент в настройках.
+                Подписка продлевается автоматически. Отменить можно в любой момент в
+                настройках.
               </Text>
             </View>
           </View>
@@ -159,18 +162,15 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.light.background,
   },
-  
-  // --- ЕДИНЫЕ СТИЛИ ХЕДЕРА ---
   header: {
+    height: 56,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: colors.light.border,
     backgroundColor: colors.light.background,
-    minHeight: 56,
   },
   headerButtonLeft: {
     width: 40,
@@ -190,13 +190,12 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.light.foreground,
     textAlign: 'center',
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
-  // ---------------------------
-
   container: { flex: 1 },
   scrollContent: { paddingBottom: spacing['2xl'] },
   content: { flex: 1 },
-  
   titleSection: {
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.lg,
@@ -215,7 +214,6 @@ const styles = StyleSheet.create({
     color: colors.light.mutedForeground,
     textAlign: 'center',
   },
-  
   plansSection: { paddingTop: spacing.lg },
   sectionTitle: {
     fontSize: typography.lg,
@@ -229,7 +227,6 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.lg,
     gap: spacing.md,
   },
-  
   infoCard: {
     margin: spacing.lg,
     padding: spacing.lg,
@@ -241,6 +238,15 @@ const styles = StyleSheet.create({
   },
   infoIcon: { alignItems: 'center', justifyContent: 'center' },
   infoContent: { flex: 1 },
-  infoTitle: { fontSize: typography.base, fontWeight: '600', color: colors.light.foreground, marginBottom: 4 },
-  infoText: { fontSize: typography.sm, color: colors.light.mutedForeground, lineHeight: 18 },
+  infoTitle: {
+    fontSize: typography.base,
+    fontWeight: '600',
+    color: colors.light.foreground,
+    marginBottom: 4,
+  },
+  infoText: {
+    fontSize: typography.sm,
+    color: colors.light.mutedForeground,
+    lineHeight: 18,
+  },
 });

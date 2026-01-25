@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -6,61 +6,41 @@ import {
   ScrollView,
   TouchableOpacity,
   StatusBar,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { colors, spacing, borderRadius, typography } from '../theme/colors';
+import { useUserStore } from '../store/userStore';
+import { useToast } from '../components/ToastProvider';
+
+// Импорт новых компонентов списка
+import FavoritesList from '../components/ProfileComponents/FavoritesList';
+import TicketsList from '../components/ProfileComponents/TicketsList';
 
 // --------------------
 // Типы
 // --------------------
-interface InterestItem {
-  id: string;
-  label: string;
-  icon: string;
-}
-
-interface StatItem {
-  icon: keyof typeof Ionicons.glyphMap;
-  value: string;
-  label: string;
-}
-
 interface ProfileSection {
   id: string;
   title: string;
-  icon: keyof typeof Ionicons.glyphMap; // ИСПРАВЛЕНО: Теперь ждем имя иконки, а не эмодзи
+  icon: keyof typeof Ionicons.glyphMap;
 }
 
 interface ProfileScreenProps {
-  avatarInitials?: string;
-  name?: string;
-  email?: string;
-  role?: string;
-  subscriptionType?: string;
-  subscriptionStatus?: 'free' | 'premium' | 'pro';
-  interests?: InterestItem[];
-  stats?: StatItem[];
   activeTab?: 'tickets' | 'favorites';
-  bio?: string;
-  eventsAttended?: number;
-  eventsSaved?: number;
-  communitiesJoined?: number;
   profileSections?: ProfileSection[];
   onTabChange?: (tab: 'tickets' | 'favorites') => void;
   onSettings?: () => void;
   onEdit?: () => void;
   onBecomeOrganizer?: () => void;
-  onExplore?: () => void;
   onSectionPress?: (sectionId: string) => void;
   onSubscriptionPress?: () => void;
-  hasTickets?: boolean;
-  children?: React.ReactNode;
 }
 
 // --------------------
-// Компоненты
+// Вспомогательные компоненты
 // --------------------
 
 interface ProfileHeaderProps {
@@ -68,8 +48,7 @@ interface ProfileHeaderProps {
   name: string;
   email: string;
   role: string;
-  subscriptionType: string;
-  subscriptionStatus?: 'free' | 'premium' | 'pro';
+  subscriptionStatus?: 'none' | 'basic' | 'premium';
   bio?: string;
   onEdit: () => void;
   onSubscriptionPress?: () => void;
@@ -80,18 +59,15 @@ function ProfileHeader({
   name,
   email,
   role,
-  subscriptionType,
   subscriptionStatus,
   bio,
   onEdit,
   onSubscriptionPress,
 }: ProfileHeaderProps) {
-  const showSubscription = subscriptionType !== '';
-  const showSubscriptionBadge = subscriptionStatus && subscriptionStatus !== 'free';
+  const showSubscriptionBadge = subscriptionStatus && subscriptionStatus !== 'none';
 
   return (
     <View style={styles.profileHeaderContainer}>
-      {/* Верхняя часть: Аватар и Инфо */}
       <View style={styles.topRow}>
         <View style={styles.avatar}>
           <Text style={styles.avatarText}>{avatarInitials}</Text>
@@ -104,26 +80,24 @@ function ProfileHeader({
               <TouchableOpacity onPress={onSubscriptionPress}>
                 <View style={[styles.subscriptionBadge, styles.premiumBadge]}>
                   <Text style={styles.premiumText}>
-                    {subscriptionStatus === 'premium' ? 'PREMIUM' : 'PRO'}
+                    {subscriptionStatus === 'premium' ? 'PREMIUM' : 'BASIC'}
                   </Text>
                 </View>
               </TouchableOpacity>
             )}
           </View>
-          
+
           <Text style={styles.email}>{email}</Text>
           <Text style={styles.role}>{role}</Text>
         </View>
       </View>
 
-      {/* Описание (Bio) - теперь на всю ширину */}
-      {bio && (
+      {bio ? (
         <View style={styles.bioContainer}>
           <Text style={styles.bioText}>{bio}</Text>
         </View>
-      )}
+      ) : null}
 
-      {/* Кнопка редактирования - теперь на всю ширину */}
       <TouchableOpacity style={styles.editButton} onPress={onEdit}>
         <Text style={styles.editButtonText}>Редактировать профиль</Text>
       </TouchableOpacity>
@@ -131,22 +105,20 @@ function ProfileHeader({
   );
 }
 
-interface ProfileStatsProps {
-  eventsAttended: number;
-  eventsSaved: number;
-  communitiesJoined: number;
-}
-
 function ProfileStats({
   eventsAttended,
   eventsSaved,
   communitiesJoined,
-}: ProfileStatsProps) {
+}: {
+  eventsAttended: number;
+  eventsSaved: number;
+  communitiesJoined: number;
+}) {
   const stats = [
     {
       icon: 'calendar-outline' as const,
       value: eventsAttended.toString(),
-      label: 'Посетил',
+      label: 'Билетов',
     },
     {
       icon: 'bookmark-outline' as const,
@@ -173,14 +145,10 @@ function ProfileStats({
   );
 }
 
-interface InterestTagsProps {
-  interests: string[];
-}
-
-function InterestTags({ interests }: InterestTagsProps) {
+function InterestTags({ interests }: { interests: string[] }) {
   return (
     <View style={styles.interestsSection}>
-      <Text style={styles.sectionTitle}>Интересы</Text>
+      <Text style={styles.sectionHeaderTitle}>Интересы</Text>
       <View style={styles.interestsContainer}>
         {interests.map((interest, index) => (
           <View key={index} style={styles.interestBadge}>
@@ -192,89 +160,155 @@ function InterestTags({ interests }: InterestTagsProps) {
   );
 }
 
-interface ProfileSectionListProps {
+function ProfileSectionList({
+  sections,
+  onSectionPress,
+  onLogout,
+}: {
   sections: ProfileSection[];
   onSectionPress?: (sectionId: string) => void;
-}
-
-function ProfileSectionList({ sections, onSectionPress }: ProfileSectionListProps) {
+  onLogout: () => void;
+}) {
   return (
     <View style={styles.sectionsContainer}>
-      {sections.map((section) => (
+      {sections.map(section => (
         <TouchableOpacity
           key={section.id}
           style={styles.sectionItem}
           onPress={() => onSectionPress?.(section.id)}
         >
           <View style={styles.sectionIconContainer}>
-             <Ionicons name={section.icon} size={20} color={colors.light.primary} />
+            <Ionicons name={section.icon} size={20} color={colors.light.primary} />
           </View>
-          <Text style={styles.sectionTitle}>{section.title}</Text>
-          <Ionicons name="chevron-forward" size={20} color={colors.light.mutedForeground} />
+          <Text style={styles.menuItemText}>{section.title}</Text>
+          <Ionicons
+            name="chevron-forward"
+            size={18}
+            color={colors.light.mutedForeground}
+          />
         </TouchableOpacity>
       ))}
+      <TouchableOpacity
+        style={[styles.sectionItem, { borderBottomWidth: 0 }]}
+        onPress={onLogout}
+      >
+        <View style={styles.sectionIconContainer}>
+          <Ionicons name="log-out-outline" size={20} color="#EF4444" />
+        </View>
+        <Text style={[styles.menuItemText, { color: '#EF4444' }]}>Выйти из аккаунта</Text>
+      </TouchableOpacity>
     </View>
   );
 }
 
-// --------------------
-// Основной компонент
-// --------------------
 export default function ProfileScreen(props: ProfileScreenProps) {
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
+  const { user, logout, clearAllData, becomeOrganizer } = useUserStore();
+  const { showToast } = useToast();
 
-  // Дефолтные значения
-  const avatarInitials = props.avatarInitials || 'AJ';
-  const name = props.name || 'Alex Johnson';
-  const email = props.email || 'alex@example.com';
-  const role = props.role || 'Пользователь';
-  const subscriptionType = props.subscriptionType || '';
-  const subscriptionStatus = props.subscriptionStatus || 'free';
-  const bio = props.bio || 'Music lover, tech enthusiast, always looking for the next great event.';
-  const interests = props.interests || [];
-  const activeTab = props.activeTab || 'tickets';
-  const hasTickets = props.hasTickets || false;
+  const [activeTab, setActiveTab] = useState<'tickets' | 'favorites'>(
+    props.activeTab || 'tickets'
+  );
 
-  const eventsAttended = props.eventsAttended || 24;
-  const eventsSaved = props.eventsSaved || 12;
-  const communitiesJoined = props.communitiesJoined || 5;
+  const {
+    avatarInitials,
+    name,
+    email,
+    role,
+    userType,
+    subscriptionStatus,
+    bio,
+    interests,
+    stats,
+    savedEventIds,
+    purchasedTickets,
+  } = user;
 
-  // ИСПРАВЛЕНО: Используем имена иконок Ionicons вместо эмодзи
   const profileSections = props.profileSections || [
     { id: 'subscriptions', title: 'Подписки', icon: 'card-outline' },
     { id: 'saved_events', title: 'Сохраненные события', icon: 'bookmark-outline' },
     { id: 'my_communities', title: 'Мои сообщества', icon: 'people-outline' },
-    { id: 'my_posts', title: 'Мои посты и комментарии', icon: 'chatbox-ellipses-outline' },
+    {
+      id: 'my_posts',
+      title: 'Мои посты и комментарии',
+      icon: 'chatbox-ellipses-outline',
+    },
     { id: 'settings', title: 'Настройки', icon: 'settings-outline' },
   ];
 
-  // Обработчики
-  const handleBackPress = () => navigation.goBack();
-  const openSettings = () => props.onSettings ? props.onSettings() : console.log('Settings');
-  const editProfile = () => props.onEdit?.();
-  const becomeOrganizer = () => props.onBecomeOrganizer?.();
-  const exploreEvents = () => props.onExplore?.();
-  const changeTabToTickets = () => props.onTabChange?.('tickets');
-  const changeTabToFavorites = () => props.onTabChange?.('favorites');
-  const handleSectionPress = (id: string) => props.onSectionPress?.(id);
-  const handleSubscriptionPress = () => props.onSubscriptionPress ? props.onSubscriptionPress() : handleSectionPress('subscriptions');
+  const handleBackPress = () => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      navigation.navigate('MainTabs', { screen: 'Home' });
+    }
+  };
 
-  const interestStrings = interests.length > 0 
-    ? interests.map(i => i.label) 
-    : ['Music', 'Technology', 'Art', 'Food & Drink', 'Networking'];
+  const openSettings = () =>
+    props.onSettings ? props.onSettings() : console.log('Settings');
+  const editProfile = () => props.onEdit?.();
+
+  const handleBecomeOrganizer = () => {
+    becomeOrganizer();
+    showToast({
+      message: 'Поздравляем! Теперь вы организатор.',
+      type: 'success',
+    });
+  };
+
+  const handleSectionPress = (id: string) => {
+    if (id === 'saved_events') {
+      navigation.navigate('SavedEvents');
+      return;
+    }
+    props.onSectionPress?.(id);
+  };
+
+  const handleSubscriptionPress = () =>
+    props.onSubscriptionPress
+      ? props.onSubscriptionPress()
+      : handleSectionPress('subscriptions');
+
+  const handleLogout = () => {
+    const performLogout = () => {
+      logout();
+      showToast({ message: 'Вы вышли из аккаунта', type: 'info' });
+    };
+
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm('Вы уверены, что хотите выйти из аккаунта?');
+      if (confirmed) performLogout();
+    } else {
+      performLogout();
+    }
+  };
+
+  const handleSecretClear = () => {
+    const performClear = () => {
+      clearAllData();
+      showToast({ message: 'Все данные успешно сброшены', type: 'success' });
+    };
+
+    if (Platform.OS === 'web') {
+      if (window.confirm('Это удалит все локальные данные. Продолжить?')) {
+        performClear();
+      }
+    } else {
+      performClear();
+    }
+  };
 
   return (
     <SafeAreaView style={styles.fullContainer} edges={['top']}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.light.background} />
 
-      {/* --- СТАНДАРТИЗИРОВАННЫЙ ХЕДЕР --- */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.headerButtonLeft} onPress={handleBackPress}>
           <Ionicons name="arrow-back" size={24} color={colors.light.foreground} />
         </TouchableOpacity>
-        
+
         <Text style={styles.headerTitle}>Профиль</Text>
-        
+
         <TouchableOpacity style={styles.headerButtonRight} onPress={openSettings}>
           <Ionicons name="settings-outline" size={24} color={colors.light.foreground} />
         </TouchableOpacity>
@@ -285,85 +319,91 @@ export default function ProfileScreen(props: ProfileScreenProps) {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {/* Шапка профиля */}
         <ProfileHeader
           avatarInitials={avatarInitials}
           name={name}
           email={email}
           role={role}
-          subscriptionType={subscriptionType}
           subscriptionStatus={subscriptionStatus}
           bio={bio}
           onEdit={editProfile}
           onSubscriptionPress={handleSubscriptionPress}
         />
 
-        {/* Статистика */}
         <ProfileStats
-          eventsAttended={eventsAttended}
-          eventsSaved={eventsSaved}
-          communitiesJoined={communitiesJoined}
+          eventsAttended={purchasedTickets.length}
+          eventsSaved={savedEventIds.length}
+          communitiesJoined={stats.communitiesJoined}
         />
 
-        {/* Интересы */}
-        <InterestTags interests={interestStrings} />
+        <InterestTags interests={interests} />
 
-        {/* Баннер организатора */}
-        <View style={styles.creatorCard}>
-          <View style={styles.creatorContent}>
-            <View style={styles.creatorIcon}>
-              <Ionicons name="sparkles" size={20} color={colors.light.primary} />
+        {userType !== 'organizer' && (
+          <View style={styles.creatorCard}>
+            <View style={styles.creatorContent}>
+              <View style={styles.creatorIcon}>
+                <Ionicons name="sparkles" size={20} color={colors.light.primary} />
+              </View>
+              <View style={styles.creatorText}>
+                <Text style={styles.creatorTitle}>
+                  Хотите создавать свои мероприятия?
+                </Text>
+                <Text style={styles.creatorDescription}>
+                  Станьте организатором и получите доступ к Creator Studio
+                </Text>
+              </View>
             </View>
-            <View style={styles.creatorText}>
-              <Text style={styles.creatorTitle}>Хотите создавать свои мероприятия?</Text>
-              <Text style={styles.creatorDescription}>
-                Станьте организатором и получите доступ к Creator Studio
-              </Text>
-            </View>
-          </View>
-          <TouchableOpacity style={styles.creatorButton} onPress={becomeOrganizer}>
-            <Text style={styles.creatorButtonText}>Стать организатором</Text>
-            <Ionicons name="arrow-forward" size={16} color={colors.light.primaryForeground} />
-          </TouchableOpacity>
-        </View>
-
-        {/* Секции (Меню) */}
-        <ProfileSectionList
-          sections={profileSections}
-          onSectionPress={handleSectionPress}
-        />
-
-        {/* Табы */}
-        <View style={styles.tabsContainer}>
-          <TouchableOpacity 
-            style={[styles.tab, activeTab === 'tickets' && styles.tabActive]} 
-            onPress={changeTabToTickets}
-          >
-            <Text style={[styles.tabText, activeTab === 'tickets' && styles.tabTextActive]}>Мои билеты</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={[styles.tab, activeTab === 'favorites' && styles.tabActive]} 
-            onPress={changeTabToFavorites}
-          >
-            <Text style={[styles.tabText, activeTab === 'favorites' && styles.tabTextActive]}>Избранное</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Контент табов */}
-        {hasTickets ? props.children : (
-          <View style={styles.emptyState}>
-            <View style={styles.emptyIcon}>
-              <Ionicons name="ticket-outline" size={48} color={colors.light.mutedForeground} />
-            </View>
-            <Text style={styles.emptyTitle}>У вас пока нет билетов</Text>
-            <Text style={styles.emptyDescription}>Начните исследовать мероприятия</Text>
-            <TouchableOpacity style={styles.exploreButton} onPress={exploreEvents}>
-              <Ionicons name="search" size={16} color={colors.light.primaryForeground} />
-              <Text style={styles.exploreButtonText}>Найти мероприятия</Text>
+            <TouchableOpacity
+              style={styles.creatorButton}
+              onPress={handleBecomeOrganizer}
+            >
+              <Text style={styles.creatorButtonText}>Стать организатором</Text>
+              <Ionicons
+                name="arrow-forward"
+                size={16}
+                color={colors.light.primaryForeground}
+              />
             </TouchableOpacity>
           </View>
         )}
+
+        <ProfileSectionList
+          sections={profileSections}
+          onSectionPress={handleSectionPress}
+          onLogout={handleLogout}
+        />
+
+        <View style={styles.tabsContainer}>
+          <TouchableOpacity
+            style={[styles.tab, activeTab === 'tickets' && styles.tabActive]}
+            onPress={() => setActiveTab('tickets')}
+          >
+            <Text
+              style={[styles.tabText, activeTab === 'tickets' && styles.tabTextActive]}
+            >
+              Мои билеты
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.tab, activeTab === 'favorites' && styles.tabActive]}
+            onPress={() => setActiveTab('favorites')}
+          >
+            <Text
+              style={[styles.tabText, activeTab === 'favorites' && styles.tabTextActive]}
+            >
+              Избранное
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {activeTab === 'tickets' ? <TicketsList /> : <FavoritesList />}
+
+        <View style={styles.secretContainer}>
+          <TouchableOpacity onPress={handleSecretClear} activeOpacity={0.7}>
+            <Text style={styles.secretText}>v.1.0.4-production-build-stable-reset</Text>
+          </TouchableOpacity>
+        </View>
 
         <View style={styles.bottomSpacer} />
       </ScrollView>
@@ -371,26 +411,20 @@ export default function ProfileScreen(props: ProfileScreenProps) {
   );
 }
 
-// --------------------
-// Стили
-// --------------------
 const styles = StyleSheet.create({
   fullContainer: {
     flex: 1,
     backgroundColor: colors.light.background,
   },
-  
-  // --- ЕДИНЫЕ СТИЛИ ХЕДЕРА ---
   header: {
+    height: 56,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: colors.light.border,
     backgroundColor: colors.light.background,
-    minHeight: 56,
   },
   headerButtonLeft: {
     width: 40,
@@ -410,13 +444,11 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.light.foreground,
     textAlign: 'center',
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
-  // ---------------------------
-
   container: { flex: 1 },
   scrollContent: { paddingBottom: spacing['2xl'] },
-
-  // --- Стили профиля (ИСПРАВЛЕНЫ) ---
   profileHeaderContainer: {
     padding: spacing.lg,
     backgroundColor: colors.light.background,
@@ -454,11 +486,13 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.light.foreground,
   },
-  premiumBadge: {
-    backgroundColor: colors.light.primary,
+  subscriptionBadge: {
     paddingHorizontal: spacing.sm,
     paddingVertical: 2,
     borderRadius: borderRadius.md,
+  },
+  premiumBadge: {
+    backgroundColor: colors.light.primary,
   },
   premiumText: {
     fontSize: 10,
@@ -498,8 +532,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.light.foreground,
   },
-
-  // Статистика
   statsGrid: {
     flexDirection: 'row',
     paddingHorizontal: spacing.lg,
@@ -512,11 +544,6 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.lg,
     padding: spacing.md,
     alignItems: 'center',
-    // Тень
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
     elevation: 1,
   },
   statValue: {
@@ -530,13 +557,11 @@ const styles = StyleSheet.create({
     color: colors.light.mutedForeground,
     marginTop: 2,
   },
-
-  // Интересы
   interestsSection: {
     paddingHorizontal: spacing.lg,
     marginBottom: spacing.lg,
   },
-  sectionTitle: {
+  sectionHeaderTitle: {
     fontSize: typography.lg,
     fontWeight: '600',
     color: colors.light.foreground,
@@ -557,8 +582,6 @@ const styles = StyleSheet.create({
     fontSize: typography.sm,
     color: colors.light.foreground,
   },
-
-  // Баннер создателя
   creatorCard: {
     marginHorizontal: spacing.lg,
     marginBottom: spacing.lg,
@@ -583,12 +606,30 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   creatorText: { flex: 1 },
-  creatorTitle: { fontSize: typography.base, fontWeight: '600', color: colors.light.foreground },
-  creatorDescription: { fontSize: typography.sm, color: colors.light.mutedForeground, marginTop: 2 },
-  creatorButton: { flexDirection: 'row', justifyContent: 'center', gap: spacing.sm, backgroundColor: colors.light.primary, paddingVertical: spacing.md, borderRadius: borderRadius.lg, alignItems: 'center' },
-  creatorButtonText: { fontSize: typography.base, fontWeight: '600', color: colors.light.primaryForeground },
-
-  // Список секций
+  creatorTitle: {
+    fontSize: typography.sm,
+    fontWeight: '600',
+    color: colors.light.foreground,
+  },
+  creatorDescription: {
+    fontSize: typography.xs,
+    color: colors.light.mutedForeground,
+    marginTop: 2,
+  },
+  creatorButton: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.light.primary,
+    paddingVertical: spacing.md,
+    borderRadius: borderRadius.lg,
+    alignItems: 'center',
+  },
+  creatorButtonText: {
+    fontSize: typography.sm,
+    fontWeight: '600',
+    color: colors.light.primaryForeground,
+  },
   sectionsContainer: {
     marginHorizontal: spacing.lg,
     backgroundColor: colors.light.card,
@@ -609,14 +650,12 @@ const styles = StyleSheet.create({
     width: 32,
     alignItems: 'flex-start',
   },
-  sectionTitle: {
+  menuItemText: {
     flex: 1,
-    fontSize: typography.base,
+    fontSize: typography.sm,
     color: colors.light.foreground,
-    fontWeight: '500',
+    fontWeight: '600',
   },
-
-  // Табы
   tabsContainer: {
     flexDirection: 'row',
     paddingHorizontal: spacing.lg,
@@ -642,13 +681,15 @@ const styles = StyleSheet.create({
     color: colors.light.foreground,
     fontWeight: '600',
   },
-
-  // Пустое состояние
-  emptyState: { alignItems: 'center', padding: spacing['3xl'] },
-  emptyIcon: { width: 80, height: 80, borderRadius: borderRadius.full, backgroundColor: colors.light.muted, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.lg },
-  emptyTitle: { fontSize: typography.lg, fontWeight: '600', marginBottom: spacing.sm, color: colors.light.foreground, textAlign: 'center' },
-  emptyDescription: { fontSize: typography.sm, color: colors.light.mutedForeground, marginBottom: spacing.lg, textAlign: 'center' },
-  exploreButton: { flexDirection: 'row', gap: spacing.sm, backgroundColor: colors.light.primary, paddingHorizontal: spacing.xl, paddingVertical: spacing.md, borderRadius: borderRadius.lg, alignItems: 'center' },
-  exploreButtonText: { fontSize: typography.base, fontWeight: '600', color: colors.light.primaryForeground },
-  bottomSpacer: { height: 24 },
+  secretContainer: {
+    marginTop: spacing['2xl'],
+    alignItems: 'center',
+    opacity: 0.3,
+  },
+  secretText: {
+    fontSize: 10,
+    color: colors.light.mutedForeground,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+  },
+  bottomSpacer: { height: 40 },
 });

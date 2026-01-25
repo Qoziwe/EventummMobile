@@ -14,6 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, borderRadius, typography } from '../theme/colors';
+import { useUserStore } from '../store/userStore'; // Импортируем стор
 
 interface HeaderProps {
   showSearch?: boolean;
@@ -24,7 +25,6 @@ interface HeaderProps {
   onProfilePress?: () => void;
 }
 
-// Список городов Казахстана
 const CITIES = [
   { id: '1', name: 'Астана' },
   { id: '2', name: 'Алматы' },
@@ -53,6 +53,7 @@ export default function Header({
   onSearchPress,
   onProfilePress,
 }: HeaderProps) {
+  const { user } = useUserStore(); // Получаем данные пользователя из стора
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCity, setSelectedCity] = useState('Алматы');
@@ -68,7 +69,7 @@ export default function Header({
     <TouchableOpacity
       style={[styles.cityItem, selectedCity === item.name && styles.selectedCityItem]}
       onPress={() => handleCitySelect(item.name)}
-      disabled={item.name !== 'Алматы'} // Отключаем для всех городов кроме Алматы
+      disabled={item.name !== 'Алматы'}
     >
       <View style={styles.cityItemContent}>
         <Text
@@ -96,7 +97,6 @@ export default function Header({
     <>
       <SafeAreaView edges={['top']} style={styles.safeArea}>
         <View style={styles.container}>
-          {/* Left Side */}
           <View style={styles.leftSection}>
             {showBack ? (
               <TouchableOpacity onPress={onBackPress} style={styles.backButton}>
@@ -134,7 +134,6 @@ export default function Header({
             )}
           </View>
 
-          {/* Right Side */}
           <View style={styles.rightSection}>
             {isSearchOpen ? (
               <View style={styles.searchContainer}>
@@ -172,7 +171,7 @@ export default function Header({
 
                 <TouchableOpacity style={styles.avatarButton} onPress={onProfilePress}>
                   <View style={styles.avatar}>
-                    <Text style={styles.avatarText}>ЗЛ</Text>
+                    <Text style={styles.avatarText}>{user.avatarInitials}</Text>
                   </View>
                 </TouchableOpacity>
               </>
@@ -181,7 +180,6 @@ export default function Header({
         </View>
       </SafeAreaView>
 
-      {/* Модальное окно с выпадающим списком городов */}
       <Modal
         visible={showCityDropdown}
         transparent={true}
@@ -210,9 +208,7 @@ export default function Header({
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    backgroundColor: colors.light.background,
-  },
+  safeArea: { backgroundColor: colors.light.background },
   container: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -222,21 +218,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.light.border,
   },
-  leftSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-  },
-  rightSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  logoContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
+  leftSection: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  rightSection: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  logoContainer: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   logoIcon: {
     width: 32,
     height: 32,
@@ -255,9 +239,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.light.foreground,
   },
-  backButton: {
-    padding: spacing.xs,
-  },
+  backButton: { padding: spacing.xs },
   locationButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -272,9 +254,6 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: colors.light.foreground,
   },
-  chevronIcon: {
-    marginLeft: 2,
-  },
   iconButton: {
     width: 36,
     height: 36,
@@ -282,9 +261,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarButton: {
-    marginLeft: spacing.xs,
-  },
+  avatarButton: { marginLeft: spacing.xs },
   avatar: {
     width: 32,
     height: 32,
@@ -308,12 +285,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     height: 40,
   },
-  searchInput: {
-    flex: 1,
-    fontSize: typography.base,
-    color: colors.light.foreground,
-  },
-  // Стили для модального окна и выпадающего списка
+  searchInput: { flex: 1, fontSize: typography.base, color: colors.light.foreground },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
@@ -326,10 +298,7 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.lg,
     paddingVertical: spacing.md,
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     elevation: 5,
@@ -343,9 +312,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.light.border,
   },
-  cityList: {
-    maxHeight: 300,
-  },
+  cityList: { maxHeight: 300 },
   cityItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -354,27 +321,13 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: colors.light.border,
-    opacity: 0.7, // Легкое затемнение для всей строки
+    opacity: 0.7,
   },
-  cityItemContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  cityItemText: {
-    fontSize: typography.base,
-    color: colors.light.foreground,
-  },
-  selectedCityItem: {
-    backgroundColor: colors.light.secondary,
-  },
-  selectedCityItemText: {
-    fontWeight: '600',
-    color: colors.light.primary,
-  },
-  disabledCityText: {
-    color: colors.light.mutedForeground,
-  },
+  cityItemContent: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  cityItemText: { fontSize: typography.base, color: colors.light.foreground },
+  selectedCityItem: { backgroundColor: colors.light.secondary },
+  selectedCityItemText: { fontWeight: '600', color: colors.light.primary },
+  disabledCityText: { color: colors.light.mutedForeground },
   soonBadge: {
     backgroundColor: colors.light.secondary,
     paddingHorizontal: spacing.sm,

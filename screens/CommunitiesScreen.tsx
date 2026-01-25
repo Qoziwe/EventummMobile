@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -14,119 +14,52 @@ import { useNavigation } from '@react-navigation/native';
 
 import { colors, spacing, borderRadius, typography } from '../theme/colors';
 import CommunityCard from '../components/CommunityComponents/CommunityCard';
+import { COMMUNITIES, MOCK_POSTS } from '../data/communitiesMockData';
 
-// --------------------
-// Типы
-// --------------------
-interface CategoryItem {
-  id: string;
-  label: string;
-}
-
-interface CommunityItem {
-  id: string;
-  name: string;
-  members: number;
-  category: string;
-  description: string;
-  isPrivate: boolean;
-}
-
-// --------------------
-// Данные
-// --------------------
-const defaultCategories: CategoryItem[] = [
+const defaultCategories = [
   { id: 'all', label: 'Все' },
   { id: 'music', label: 'Музыка' },
   { id: 'tech', label: 'Технологии' },
-  { id: 'art', label: 'Искусство' },
   { id: 'sport', label: 'Спорт' },
   { id: 'food', label: 'Еда' },
 ];
 
-const communities: CommunityItem[] = [
-  {
-    id: '1',
-    name: 'Музыкальные фестивали',
-    members: 1250,
-    category: 'Музыка',
-    description: 'Обсуждаем лучшие музыкальные мероприятия',
-    isPrivate: false,
-  },
-  {
-    id: '2',
-    name: 'Tech Talks',
-    members: 890,
-    category: 'Технологии',
-    description: 'ИТ-конференции и встречи разработчиков',
-    isPrivate: false,
-  },
-  {
-    id: '3',
-    name: 'Фотографы событий',
-    members: 450,
-    category: 'Фотография',
-    description: 'Советы по съемке мероприятий',
-    isPrivate: false,
-  },
-  {
-    id: '4',
-    name: 'Спортивные болельщики',
-    members: 2100,
-    category: 'Спорт',
-    description: 'Обсуждения матчей и турниров',
-    isPrivate: false,
-  },
-];
-
 export default function CommunitiesScreen() {
   const navigation = useNavigation();
-
-  // Состояние
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchValue, setSearchValue] = useState<string>('');
 
-  // Обработчики
-  function openPostThread(postId: string) {
-    navigation.navigate('PostThread' as never, { postId } as never);
-  }
+  const filteredCommunities = useMemo(() => {
+    return COMMUNITIES.filter(c => {
+      const matchesSearch = c.name.toLowerCase().includes(searchValue.toLowerCase());
+      const matchesCategory =
+        selectedCategory === 'all' || c.categorySlug === selectedCategory;
+      return matchesSearch && matchesCategory;
+    });
+  }, [searchValue, selectedCategory]);
 
   function openCommunityPosts(communityId: string) {
-    // Для примера открываем тред
-    openPostThread('sample-post-id');
-  }
-
-  function createCommunity() {
-    console.log('Создание сообщества');
-  }
-
-  function handleBackPress() {
-    navigation.goBack();
+    const post = MOCK_POSTS.find(p => p.communityId === communityId);
+    if (post) {
+      navigation.navigate('PostThread' as never, { postId: post.id } as never);
+    }
   }
 
   return (
     <SafeAreaView style={styles.fullContainer} edges={['top']}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.light.background} />
 
-      {/* --- СТАНДАРТИЗИРОВАННЫЙ ХЕДЕР --- */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.headerButtonLeft} onPress={handleBackPress}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={24} color={colors.light.foreground} />
         </TouchableOpacity>
-
         <Text style={styles.headerTitle}>Сообщества</Text>
-
-        <TouchableOpacity style={styles.headerButtonRight} onPress={createCommunity}>
+        <TouchableOpacity style={styles.headerButtonRight}>
           <Ionicons name="add" size={28} color={colors.light.primary} />
         </TouchableOpacity>
       </View>
 
-      <ScrollView
-        style={styles.container}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-      >
-        {/* Поиск */}
+      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
         <View style={styles.searchContainer}>
           <Ionicons name="search" size={18} color={colors.light.mutedForeground} />
           <TextInput
@@ -138,25 +71,21 @@ export default function CommunitiesScreen() {
           />
         </View>
 
-        {/* Категории */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.categoriesContainer}
         >
-          {defaultCategories.map(function (category) {
+          {defaultCategories.map(category => {
             const isActive = selectedCategory === category.id;
             return (
               <TouchableOpacity
                 key={category.id}
-                style={[styles.categoryChip, isActive ? styles.categoryChipActive : null]}
+                style={[styles.categoryChip, isActive && styles.categoryChipActive]}
                 onPress={() => setSelectedCategory(category.id)}
               >
                 <Text
-                  style={[
-                    styles.categoryLabel,
-                    isActive ? styles.categoryLabelActive : null,
-                  ]}
+                  style={[styles.categoryLabel, isActive && styles.categoryLabelActive]}
                 >
                   {category.label}
                 </Text>
@@ -165,17 +94,11 @@ export default function CommunitiesScreen() {
           })}
         </ScrollView>
 
-        {/* Сообщества */}
         <View style={styles.communitiesGrid}>
-          {communities.map(community => (
+          {filteredCommunities.map(community => (
             <CommunityCard
               key={community.id}
-              id={community.id}
-              name={community.name}
-              members={community.members}
-              category={community.category}
-              description={community.description}
-              isPrivate={community.isPrivate}
+              {...community}
               onPress={() => openCommunityPosts(community.id)}
             />
           ))}
@@ -185,33 +108,18 @@ export default function CommunitiesScreen() {
   );
 }
 
-// --------------------
-// Стили
-// --------------------
 const styles = StyleSheet.create({
-  fullContainer: {
-    flex: 1,
-    backgroundColor: colors.light.background,
-  },
-
-  // --- ЕДИНЫЕ СТИЛИ ХЕДЕРА ---
+  fullContainer: { flex: 1, backgroundColor: colors.light.background },
   header: {
+    height: 56,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: colors.light.border,
-    backgroundColor: colors.light.background,
-    minHeight: 56, // Фиксированная высота
   },
-  headerButtonLeft: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'flex-start',
-  },
+  backBtn: { width: 40, height: 40, justifyContent: 'center' },
   headerButtonRight: {
     width: 40,
     height: 40,
@@ -219,20 +127,13 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   headerTitle: {
-    flex: 1,
     fontSize: typography.xl,
     fontWeight: '700',
     color: colors.light.foreground,
-    textAlign: 'center',
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
-  // ---------------------------
-
-  container: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingBottom: spacing['2xl'],
-  },
+  container: { flex: 1 },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -243,11 +144,7 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.lg,
     gap: spacing.sm,
   },
-  searchInput: {
-    flex: 1,
-    fontSize: typography.base,
-    color: colors.light.foreground,
-  },
+  searchInput: { flex: 1, fontSize: typography.base, color: colors.light.foreground },
   categoriesContainer: {
     paddingHorizontal: spacing.lg,
     gap: spacing.sm,
@@ -257,7 +154,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderRadius: borderRadius.lg,
-    backgroundColor: colors.light.background,
     borderWidth: 1,
     borderColor: colors.light.border,
   },
@@ -265,18 +161,12 @@ const styles = StyleSheet.create({
     backgroundColor: colors.light.primary,
     borderColor: colors.light.primary,
   },
-  categoryLabel: {
-    fontSize: typography.sm,
-    color: colors.light.foreground,
-  },
-  categoryLabelActive: {
-    color: colors.light.primaryForeground,
-  },
+  categoryLabel: { fontSize: typography.sm, color: colors.light.foreground },
+  categoryLabelActive: { color: colors.light.primaryForeground },
   communitiesGrid: {
     paddingHorizontal: spacing.lg,
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    gap: spacing.md,
   },
 });

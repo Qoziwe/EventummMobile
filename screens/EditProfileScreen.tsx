@@ -1,236 +1,190 @@
-import React, { useState, useLayoutEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  TextInput,
-  TouchableOpacity,
   ScrollView,
+  TouchableOpacity,
+  TextInput,
   KeyboardAvoidingView,
   Platform,
-  Alert,
+  StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-
+import { useNavigation } from '@react-navigation/native';
 import { colors, spacing, borderRadius, typography } from '../theme/colors';
-
-interface EditProfileScreenProps {
-  initialName?: string;
-  initialBio?: string;
-  initialEmail?: string;
-  initialPhone?: string;
-  initialLocation?: string;
-  initialInterests?: string[];
-}
+import { useUserStore } from '../store/userStore';
+import { useToast } from '../components/ToastProvider';
+import { ALL_INTERESTS } from '../data/userMockData';
 
 export default function EditProfileScreen() {
   const navigation = useNavigation();
-  const route = useRoute();
+  const { user, updateProfile } = useUserStore();
+  const { showToast } = useToast();
 
-  const params = route.params as EditProfileScreenProps | undefined;
-
-  // --------------------
-  // Состояние
-  // --------------------
-  const [name, setName] = useState(params?.initialName || 'Alex Johnson');
-  const [username, setUsername] = useState('@alex_j');
-  const [bio, setBio] = useState(params?.initialBio || 'Music lover, tech enthusiast.');
-  const [email, setEmail] = useState(params?.initialEmail || 'alex@example.com');
-  const [phone, setPhone] = useState(params?.initialPhone || '+7 700 123 45 67');
-  const [location, setLocation] = useState(
-    params?.initialLocation || 'Алматы, Казахстан'
-  );
-  const [interests, setInterests] = useState<string[]>(
-    params?.initialInterests || ['Music', 'Technology']
-  );
-
-  // Скрываем нативный хедер
-  useLayoutEffect(() => {
-    navigation.setOptions({ headerShown: false });
-  }, [navigation]);
-
-  // --------------------
-  // Обработчики
-  // --------------------
-  const handleBackPress = () => navigation.goBack();
+  const [formData, setFormData] = useState({
+    name: user.name,
+    username: user.username,
+    bio: user.bio,
+    phone: user.phone,
+    location: user.location,
+    interests: [...user.interests],
+  });
 
   const handleSave = () => {
-    console.log('Saving profile data...');
+    if (!formData.name.trim()) {
+      showToast({ message: 'Имя не может быть пустым', type: 'error' });
+      return;
+    }
+
+    updateProfile(formData);
+    showToast({ message: 'Профиль успешно обновлен', type: 'success' });
     navigation.goBack();
   };
 
-  const handleChangePhoto = () => Alert.alert('Фото', 'Открыть галерею...');
-  const removeInterest = (item: string) =>
-    setInterests(interests.filter(i => i !== item));
-  const addInterest = () => Alert.alert('Интересы', 'Добавить тег...');
-
-  const handleChangePassword = () => {
-    Alert.alert('Смена пароля', 'Переход на экран смены пароля');
+  const toggleInterest = (interest: string) => {
+    setFormData(prev => ({
+      ...prev,
+      interests: prev.interests.includes(interest)
+        ? prev.interests.filter(i => i !== interest)
+        : [...prev.interests, interest],
+    }));
   };
-
-  const handleLogout = () => {
-    Alert.alert('Выход', 'Вы уверены, что хотите выйти?', [
-      { text: 'Отмена', style: 'cancel' },
-      {
-        text: 'Выйти',
-        style: 'destructive',
-        onPress: () => console.log('Логика логаута'),
-      },
-    ]);
-  };
-
-  const handleDeleteAccount = () => {
-    Alert.alert(
-      'Удаление аккаунта',
-      'Это действие необратимо. Все ваши данные будут стерты.',
-      [
-        { text: 'Отмена', style: 'cancel' },
-        {
-          text: 'Удалить',
-          style: 'destructive',
-          onPress: () => console.log('Логика удаления'),
-        },
-      ]
-    );
-  };
-
-  // --------------------
-  // Рендер полей
-  // --------------------
-  const renderInput = (
-    label: string,
-    value: string,
-    setValue: (text: string) => void,
-    options: { multiline?: boolean; placeholder?: string; keyboardType?: any } = {}
-  ) => (
-    <View style={styles.inputGroup}>
-      <Text style={styles.label}>{label}</Text>
-      <View
-        style={[
-          styles.inputContainer,
-          options.multiline && styles.inputContainerMultiline,
-        ]}
-      >
-        <TextInput
-          style={[styles.input, options.multiline && styles.inputMultiline]}
-          value={value}
-          onChangeText={setValue}
-          placeholder={options.placeholder}
-          placeholderTextColor={colors.light.mutedForeground}
-          multiline={options.multiline}
-          textAlignVertical={options.multiline ? 'top' : 'center'}
-          keyboardType={options.keyboardType || 'default'}
-        />
-      </View>
-    </View>
-  );
 
   return (
     <SafeAreaView style={styles.fullContainer} edges={['top']}>
-      {/* ХЕДЕР: Идентичный ProfileScreen */}
+      <StatusBar barStyle="dark-content" backgroundColor={colors.light.background} />
+
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
-          <Ionicons name="arrow-back" size={24} color={colors.light.foreground} />
+        <TouchableOpacity style={styles.headerButton} onPress={() => navigation.goBack()}>
+          <Ionicons name="close" size={24} color={colors.light.foreground} />
         </TouchableOpacity>
-
         <Text style={styles.headerTitle}>Редактировать</Text>
-
-        <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-          {/* Используем галочку вместо текста "Готово" для единого стиля */}
-          <Ionicons name="checkmark" size={24} color={colors.light.primary} />
+        <TouchableOpacity style={styles.headerButton} onPress={handleSave}>
+          <Text style={styles.saveButtonText}>Готово</Text>
         </TouchableOpacity>
       </View>
 
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
       >
         <ScrollView
           style={styles.container}
-          showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
         >
-          {/* Фото */}
+          {/* Avatar Section */}
           <View style={styles.avatarSection}>
-            <TouchableOpacity style={styles.avatarContainer} onPress={handleChangePhoto}>
-              <View style={styles.avatar}>
-                <Text style={styles.avatarText}>AJ</Text>
-                <View style={styles.cameraIconContainer}>
-                  <Ionicons name="camera" size={14} color={colors.light.background} />
-                </View>
-              </View>
-              <Text style={styles.changePhotoText}>Изменить фото</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Основная инфо */}
-          <View style={styles.section}>
-            {renderInput('Имя', name, setName)}
-            {renderInput('Username', username, setUsername, { placeholder: '@username' })}
-            {renderInput('О себе', bio, setBio, { multiline: true })}
-          </View>
-
-          {/* Контакты */}
-          <View style={styles.section}>
-            <Text style={styles.sectionHeader}>Контакты</Text>
-            {renderInput('Email', email, setEmail, { keyboardType: 'email-address' })}
-            {renderInput('Телефон', phone, setPhone, { keyboardType: 'phone-pad' })}
-            {renderInput('Город', location, setLocation)}
-          </View>
-
-          {/* Интересы */}
-          <View style={styles.section}>
-            <View style={styles.interestsHeaderRow}>
-              <Text style={styles.sectionHeader}>Интересы</Text>
-              <TouchableOpacity onPress={addInterest}>
-                <Text style={styles.addInterestText}>+ Добавить</Text>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>{user.avatarInitials}</Text>
+              <TouchableOpacity style={styles.changePhotoButton}>
+                <Ionicons
+                  name="camera"
+                  size={18}
+                  color={colors.light.primaryForeground}
+                />
               </TouchableOpacity>
             </View>
-            <View style={styles.interestsContainer}>
-              {interests.map((item, index) => (
-                <View key={index} style={styles.interestChip}>
-                  <Text style={styles.interestText}>{item}</Text>
-                  <TouchableOpacity onPress={() => removeInterest(item)}>
-                    <Ionicons
-                      name="close-circle"
-                      size={16}
-                      color={colors.light.mutedForeground}
-                    />
-                  </TouchableOpacity>
-                </View>
-              ))}
+            <Text style={styles.changePhotoLabel}>Изменить фото</Text>
+          </View>
+
+          {/* Form Fields */}
+          <View style={styles.form}>
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Имя</Text>
+              <TextInput
+                style={styles.input}
+                value={formData.name}
+                onChangeText={text => setFormData({ ...formData, name: text })}
+                placeholder="Ваше имя"
+                placeholderTextColor={colors.light.mutedForeground}
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Имя пользователя</Text>
+              <TextInput
+                style={styles.input}
+                value={formData.username}
+                onChangeText={text => setFormData({ ...formData, username: text })}
+                placeholder="@username"
+                autoCapitalize="none"
+                placeholderTextColor={colors.light.mutedForeground}
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>О себе</Text>
+              <TextInput
+                style={[styles.input, styles.textArea]}
+                value={formData.bio}
+                onChangeText={text => setFormData({ ...formData, bio: text })}
+                placeholder="Расскажите о себе"
+                multiline
+                numberOfLines={4}
+                textAlignVertical="top"
+                placeholderTextColor={colors.light.mutedForeground}
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Телефон</Text>
+              <TextInput
+                style={styles.input}
+                value={formData.phone}
+                onChangeText={text => setFormData({ ...formData, phone: text })}
+                placeholder="+7 (___) ___-__-__"
+                keyboardType="phone-pad"
+                placeholderTextColor={colors.light.mutedForeground}
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Город</Text>
+              <TextInput
+                style={styles.input}
+                value={formData.location}
+                onChangeText={text => setFormData({ ...formData, location: text })}
+                placeholder="Ваш город"
+                placeholderTextColor={colors.light.mutedForeground}
+              />
+            </View>
+
+            {/* Interests Selection */}
+            <View style={styles.interestsSection}>
+              <Text style={styles.label}>Интересы</Text>
+              <View style={styles.interestsGrid}>
+                {ALL_INTERESTS.map(interest => {
+                  const isSelected = formData.interests.includes(interest);
+                  return (
+                    <TouchableOpacity
+                      key={interest}
+                      style={[styles.interestTag, isSelected && styles.interestTagActive]}
+                      onPress={() => toggleInterest(interest)}
+                    >
+                      <Text
+                        style={[
+                          styles.interestTagText,
+                          isSelected && styles.interestTagTextActive,
+                        ]}
+                      >
+                        {interest}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
             </View>
           </View>
 
-          {/* Безопасность и Аккаунт */}
-          <View style={styles.section}>
-            <Text style={styles.sectionHeader}>Безопасность</Text>
-
-            <TouchableOpacity style={styles.actionButton} onPress={handleChangePassword}>
-              <Text style={styles.actionButtonText}>Сменить пароль</Text>
-              <Ionicons
-                name="chevron-forward"
-                size={20}
-                color={colors.light.mutedForeground}
-              />
-            </TouchableOpacity>
-
-            <View style={styles.divider} />
-
-            <TouchableOpacity style={styles.actionButton} onPress={handleLogout}>
-              <Text style={styles.logoutText}>Выйти из аккаунта</Text>
-              <Ionicons name="log-out-outline" size={20} color={colors.light.primary} />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.deleteButtonContainer}
-              onPress={handleDeleteAccount}
-            >
-              <Text style={styles.deleteButtonText}>Удалить аккаунт</Text>
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity
+            style={styles.deleteAccountButton}
+            onPress={() => console.log('Delete account')}
+          >
+            <Text style={styles.deleteAccountText}>Удалить аккаунт</Text>
+          </TouchableOpacity>
 
           <View style={styles.bottomSpacer} />
         </ScrollView>
@@ -244,158 +198,139 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.light.background,
   },
-  container: { flex: 1 },
-  scrollContent: { paddingBottom: spacing['2xl'] },
-
-  // --- ХЕДЕР (Стили идентичны ProfileScreen) ---
   header: {
+    height: 56,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: colors.light.border,
-    backgroundColor: colors.light.background,
   },
-  backButton: {
-    padding: spacing.xs,
-  },
-  saveButton: {
-    padding: spacing.xs,
+  headerButton: {
+    padding: spacing.sm,
+    minWidth: 60,
   },
   headerTitle: {
-    fontSize: typography.xl,
+    fontSize: typography.lg,
     fontWeight: '700',
     color: colors.light.foreground,
-    textAlign: 'center',
   },
-
-  // Аватар
-  avatarSection: { alignItems: 'center', paddingVertical: spacing.xl },
-  avatarContainer: { alignItems: 'center', gap: spacing.sm },
+  saveButtonText: {
+    fontSize: typography.base,
+    fontWeight: '600',
+    color: colors.light.primary,
+    textAlign: 'right',
+  },
+  container: {
+    flex: 1,
+  },
+  scrollContent: {
+    padding: spacing.lg,
+  },
+  avatarSection: {
+    alignItems: 'center',
+    marginBottom: spacing.xl,
+  },
   avatar: {
-    width: 90,
-    height: 90,
+    width: 100,
+    height: 100,
     borderRadius: borderRadius.full,
     backgroundColor: colors.light.secondary,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: colors.light.border,
+    position: 'relative',
   },
-  avatarText: { fontSize: 32, fontWeight: '600', color: colors.light.foreground },
-  cameraIconContainer: {
+  avatarText: {
+    fontSize: typography['3xl'],
+    fontWeight: '600',
+    color: colors.light.foreground,
+  },
+  changePhotoButton: {
     position: 'absolute',
     bottom: 0,
     right: 0,
     backgroundColor: colors.light.primary,
-    width: 28,
-    height: 28,
+    width: 32,
+    height: 32,
     borderRadius: borderRadius.full,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
     borderColor: colors.light.background,
   },
-  changePhotoText: {
+  changePhotoLabel: {
+    marginTop: spacing.sm,
     fontSize: typography.sm,
     color: colors.light.primary,
     fontWeight: '500',
   },
-
-  // Секции
-  section: { paddingHorizontal: spacing.lg, marginBottom: spacing.xl },
-  sectionHeader: {
-    fontSize: typography.lg,
-    fontWeight: '600',
-    color: colors.light.foreground,
-    marginBottom: spacing.md,
+  form: {
+    gap: spacing.lg,
   },
-
-  // Инпуты
-  inputGroup: { marginBottom: spacing.md },
-  label: {
-    fontSize: typography.xs,
-    fontWeight: '500',
-    color: colors.light.mutedForeground,
-    marginBottom: spacing.xs,
-    marginLeft: spacing.xs,
-  },
-  inputContainer: {
-    backgroundColor: colors.light.secondary,
-    borderRadius: borderRadius.lg,
-    paddingHorizontal: spacing.md,
-    height: 48,
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'transparent',
-  },
-  inputContainerMultiline: { height: 100, paddingVertical: spacing.sm },
-  input: { fontSize: typography.base, color: colors.light.foreground },
-  inputMultiline: { height: '100%' },
-
-  // Интересы
-  interestsHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.md,
-  },
-  addInterestText: {
-    fontSize: typography.sm,
-    color: colors.light.primary,
-    fontWeight: '500',
-  },
-  interestsContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  interestChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  inputGroup: {
     gap: spacing.xs,
-    backgroundColor: colors.light.secondary,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs + 2,
-    borderRadius: borderRadius.full,
-    borderWidth: 1,
-    borderColor: colors.light.border,
   },
-  interestText: { fontSize: typography.sm, color: colors.light.foreground },
-
-  // --- Кнопки действий ---
-  actionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+  label: {
+    fontSize: typography.sm,
+    fontWeight: '600',
+    color: colors.light.foreground,
+    marginLeft: 4,
+  },
+  input: {
     backgroundColor: colors.light.card,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.md,
-    borderRadius: borderRadius.lg,
     borderWidth: 1,
     borderColor: colors.light.border,
-  },
-  actionButtonText: {
+    borderRadius: borderRadius.lg,
+    paddingHorizontal: spacing.md,
+    paddingVertical: Platform.OS === 'ios' ? spacing.md : spacing.sm,
     fontSize: typography.base,
     color: colors.light.foreground,
-    fontWeight: '500',
   },
-  logoutText: {
-    fontSize: typography.base,
-    color: colors.light.primary,
-    fontWeight: '500',
+  textArea: {
+    minHeight: 100,
+    paddingTop: spacing.md,
   },
-  divider: {
-    height: spacing.sm,
+  interestsSection: {
+    marginTop: spacing.md,
   },
-  deleteButtonContainer: {
-    marginTop: spacing.xl,
-    alignItems: 'center',
+  interestsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginTop: spacing.sm,
+  },
+  interestTag: {
+    paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
+    borderRadius: borderRadius.full,
+    backgroundColor: colors.light.card,
+    borderWidth: 1,
+    borderColor: colors.light.border,
   },
-  deleteButtonText: {
+  interestTagActive: {
+    backgroundColor: colors.light.primary,
+    borderColor: colors.light.primary,
+  },
+  interestTagText: {
     fontSize: typography.sm,
-    color: '#FF3B30',
+    color: colors.light.foreground,
+  },
+  interestTagTextActive: {
+    color: colors.light.primaryForeground,
     fontWeight: '600',
   },
-
-  bottomSpacer: { height: 40 },
+  deleteAccountButton: {
+    marginTop: spacing['2xl'],
+    paddingVertical: spacing.md,
+    alignItems: 'center',
+  },
+  deleteAccountText: {
+    color: '#EF4444',
+    fontSize: typography.sm,
+    fontWeight: '500',
+  },
+  bottomSpacer: {
+    height: 40,
+  },
 });
