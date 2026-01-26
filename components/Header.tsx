@@ -6,7 +6,6 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  TextInput,
   Modal,
   FlatList,
   TouchableWithoutFeedback,
@@ -14,14 +13,12 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, borderRadius, typography } from '../theme/colors';
-import { useUserStore } from '../store/userStore'; // Импортируем стор
+import { useUserStore } from '../store/userStore';
 
 interface HeaderProps {
-  showSearch?: boolean;
   showBack?: boolean;
   onBackPress?: () => void;
   title?: string;
-  onSearchPress?: () => void;
   onProfilePress?: () => void;
 }
 
@@ -46,16 +43,12 @@ const CITIES = [
 ];
 
 export default function Header({
-  showSearch = true,
   showBack = false,
   onBackPress,
   title,
-  onSearchPress,
   onProfilePress,
 }: HeaderProps) {
-  const { user } = useUserStore(); // Получаем данные пользователя из стора
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  const { user } = useUserStore();
   const [selectedCity, setSelectedCity] = useState('Алматы');
   const [showCityDropdown, setShowCityDropdown] = useState(false);
   const dropdownRef = useRef<View>(null);
@@ -117,7 +110,7 @@ export default function Header({
 
             {title && <Text style={styles.headerTitle}>{title}</Text>}
 
-            {!showBack && !isSearchOpen && (
+            {!showBack && (
               <View ref={dropdownRef}>
                 <TouchableOpacity
                   style={styles.locationButton}
@@ -135,47 +128,19 @@ export default function Header({
           </View>
 
           <View style={styles.rightSection}>
-            {isSearchOpen ? (
-              <View style={styles.searchContainer}>
-                <Ionicons name="search" size={18} color={colors.light.mutedForeground} />
-                <TextInput
-                  style={styles.searchInput}
-                  placeholder="Поиск..."
-                  placeholderTextColor={colors.light.mutedForeground}
-                  value={searchQuery}
-                  onChangeText={setSearchQuery}
-                  autoFocus
-                />
-                <TouchableOpacity onPress={() => setIsSearchOpen(false)}>
-                  <Ionicons name="close" size={20} color={colors.light.mutedForeground} />
-                </TouchableOpacity>
+            <TouchableOpacity style={styles.iconButton}>
+              <Ionicons
+                name="notifications-outline"
+                size={22}
+                color={colors.light.foreground}
+              />
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.avatarButton} onPress={onProfilePress}>
+              <View style={styles.avatar}>
+                <Text style={styles.avatarText}>{user.avatarInitials}</Text>
               </View>
-            ) : (
-              <>
-                {showSearch && (
-                  <TouchableOpacity
-                    style={styles.iconButton}
-                    onPress={onSearchPress || (() => setIsSearchOpen(true))}
-                  >
-                    <Ionicons name="search" size={22} color={colors.light.foreground} />
-                  </TouchableOpacity>
-                )}
-
-                <TouchableOpacity style={styles.iconButton}>
-                  <Ionicons
-                    name="notifications-outline"
-                    size={22}
-                    color={colors.light.foreground}
-                  />
-                </TouchableOpacity>
-
-                <TouchableOpacity style={styles.avatarButton} onPress={onProfilePress}>
-                  <View style={styles.avatar}>
-                    <Text style={styles.avatarText}>{user.avatarInitials}</Text>
-                  </View>
-                </TouchableOpacity>
-              </>
-            )}
+            </TouchableOpacity>
           </View>
         </View>
       </SafeAreaView>
@@ -275,17 +240,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.light.accentForeground,
   },
-  searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    backgroundColor: colors.light.secondary,
-    borderRadius: borderRadius.lg,
-    paddingHorizontal: spacing.md,
-    gap: spacing.sm,
-    height: 40,
-  },
-  searchInput: { flex: 1, fontSize: typography.base, color: colors.light.foreground },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
