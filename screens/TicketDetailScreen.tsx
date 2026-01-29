@@ -49,7 +49,9 @@ export default function TicketDetailScreen() {
           <View style={styles.eventInfoSection}>
             <Image
               source={
-                typeof event.image === 'string' ? { uri: event.image } : event.image
+                !event.image || event.image === '' || typeof event.image !== 'string'
+                  ? { uri: 'https://via.placeholder.com/800x450?text=Event' }
+                  : { uri: event.image }
               }
               style={styles.eventImage}
             />

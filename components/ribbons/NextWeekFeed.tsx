@@ -1,5 +1,12 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  ViewStyle,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, borderRadius, typography } from '../../theme/colors';
 import EventCard, { EventItem } from '../EventCard';
@@ -11,6 +18,7 @@ interface NextWeekFeedProps {
   onScrollRight?: () => void;
   events: EventItem[];
   onEventPress?: (event: EventItem) => void;
+  cardStyle?: ViewStyle;
 }
 
 export default function NextWeekFeed({
@@ -20,6 +28,7 @@ export default function NextWeekFeed({
   onScrollRight,
   events,
   onEventPress,
+  cardStyle,
 }: NextWeekFeedProps) {
   return (
     <View style={styles.container}>
@@ -44,7 +53,12 @@ export default function NextWeekFeed({
         contentContainerStyle={styles.eventsContainer}
       >
         {events.map(event => (
-          <EventCard key={event.id} {...event} onPress={() => onEventPress?.(event)} />
+          <EventCard
+            key={event.id}
+            {...event}
+            onPress={() => onEventPress?.(event)}
+            style={cardStyle}
+          />
         ))}
       </ScrollView>
     </View>

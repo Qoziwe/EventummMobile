@@ -1,6 +1,5 @@
 import { EventItem } from '../components/EventCard';
 
-// Вспомогательная функция для превращения ISO строки в таймстамп
 const toTS = (dateStr: string) => new Date(dateStr).getTime();
 
 export interface DetailedEventItem extends EventItem {
@@ -8,11 +7,13 @@ export interface DetailedEventItem extends EventItem {
   organizerName: string;
   organizerAvatar: string;
   timeRange: string;
+  organizerId: string; // Сделали обязательным
 }
 
 export const ALL_EVENTS: DetailedEventItem[] = [
   {
     id: '1',
+    organizerId: 'mock_org_1',
     title: 'Концерт группы "Звёзды"',
     date: '24 янв, 20:00',
     timestamp: toTS('2026-01-24T20:00:00'),
@@ -28,8 +29,7 @@ export const ALL_EVENTS: DetailedEventItem[] = [
     image:
       'https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?q=80&w=800&auto=format&fit=crop',
     addedAt: '2026-01-10',
-    fullDescription:
-      'Главное музыкальное событие этой зимы! Группа "Звёзды" возвращается на сцену с новым альбомом и всеми любимыми хитами.',
+    fullDescription: 'Главное музыкальное событие этой зимы!',
     organizerName: 'Arena Live Group',
     organizerAvatar:
       'https://images.unsplash.com/photo-1560250097-0b93528c311a?q=80&w=200&auto=format&fit=crop',
@@ -37,6 +37,7 @@ export const ALL_EVENTS: DetailedEventItem[] = [
   },
   {
     id: '2',
+    organizerId: 'mock_org_2',
     title: 'Выставка современного искусства',
     date: '25 янв, 10:00',
     timestamp: toTS('2026-01-25T10:00:00'),
@@ -52,8 +53,7 @@ export const ALL_EVENTS: DetailedEventItem[] = [
     image:
       'https://images.unsplash.com/photo-1460661419201-fd4cecdf8a8b?q=80&w=800&auto=format&fit=crop',
     addedAt: '2026-01-12',
-    fullDescription:
-      'Погрузитесь в мир современного искусства на ежегодной выставке "Грани реальности".',
+    fullDescription: 'Погрузитесь в мир современного искусства.',
     organizerName: 'Almaty Art Foundation',
     organizerAvatar:
       'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?q=80&w=200&auto=format&fit=crop',
@@ -61,6 +61,7 @@ export const ALL_EVENTS: DetailedEventItem[] = [
   },
   {
     id: '3',
+    organizerId: 'mock_org_3',
     title: 'Футбольный матч: Кайрат vs Астана',
     date: '26 янв, 19:00',
     timestamp: toTS('2026-01-26T19:00:00'),
@@ -76,264 +77,10 @@ export const ALL_EVENTS: DetailedEventItem[] = [
     image:
       'https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=800&auto=format&fit=crop',
     addedAt: '2026-01-15',
-    fullDescription: 'Главное дерби страны! "Кайрат" принимает столичную "Астану".',
+    fullDescription: 'Главное дерби страны!',
     organizerName: 'Kairat FC',
     organizerAvatar:
       'https://images.unsplash.com/photo-1552664730-d307ca884978?q=80&w=200&auto=format&fit=crop',
     timeRange: '19:00 — 21:00',
-  },
-  {
-    id: '4',
-    title: 'Мастер-класс по фотографии',
-    date: '25 янв, 14:00',
-    timestamp: toTS('2026-01-25T14:00:00'),
-    location: 'Студия "Фокус", Бостандыкский',
-    price: '4500₸',
-    priceValue: 4500,
-    categories: ['education'],
-    vibe: 'chill',
-    district: 'Бостандыкский',
-    ageLimit: 16,
-    tags: ['фото', 'обучение', 'практика'],
-    stats: 180,
-    image:
-      'https://images.unsplash.com/photo-1452784444945-3f422708fe5e?q=80&w=800&auto=format&fit=crop',
-    addedAt: '2026-01-14',
-    fullDescription:
-      'Узнайте все секреты студийной съемки от профессионального фотографа.',
-    organizerName: 'Focus Academy',
-    organizerAvatar:
-      'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=200&auto=format&fit=crop',
-    timeRange: '14:00 — 17:00',
-  },
-  {
-    id: '5',
-    title: 'Спектакль "Ромео и Джульетта"',
-    date: '24 янв, 18:30',
-    timestamp: toTS('2026-01-24T18:30:00'),
-    location: 'Драмтеатр, Алмалинский',
-    price: '3500₸',
-    priceValue: 3500,
-    categories: ['theater'],
-    vibe: 'chill',
-    district: 'Алмалинский',
-    ageLimit: 12,
-    tags: ['театр', 'драма', 'классика'],
-    stats: 890,
-    image:
-      'https://images.unsplash.com/photo-1507676184212-d03ab07a01bf?q=80&w=800&auto=format&fit=crop',
-    addedAt: '2026-01-11',
-    fullDescription: 'Вечная классика Уильяма Шекспира в современном прочтении.',
-    organizerName: 'State Drama Theater',
-    organizerAvatar:
-      'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=200&auto=format&fit=crop',
-    timeRange: '18:30 — 21:00',
-  },
-  {
-    id: '18',
-    title: 'Лекция: Как запустить стартап',
-    date: '31 янв, 16:00',
-    timestamp: toTS('2026-01-31T16:00:00'),
-    location: 'Университет KIMEP, Алмалинский',
-    price: 'Бесплатно',
-    priceValue: 0,
-    categories: ['education', 'business'],
-    vibe: 'chill',
-    district: 'Алмалинский',
-    ageLimit: 16,
-    tags: ['стартап', 'знания', 'it'],
-    stats: 450,
-    image:
-      'https://images.unsplash.com/photo-1556761175-b413da4baf72?q=80&w=800&auto=format&fit=crop',
-    addedAt: '2026-01-14',
-    fullDescription: 'От идеи до первых инвестиций. Основные этапы запуска продукта.',
-    organizerName: 'Tech Hub Almaty',
-    organizerAvatar:
-      'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?q=80&w=200&auto=format&fit=crop',
-    timeRange: '16:00 — 18:00',
-  },
-  {
-    id: '20',
-    title: 'Рисование вином: Арт-вечер',
-    date: '01 фев, 18:00',
-    timestamp: toTS('2026-02-01T18:00:00'),
-    location: 'Art Studio, Медеуский',
-    price: '10000₸',
-    priceValue: 10000,
-    categories: ['art'],
-    vibe: 'chill',
-    district: 'Медеуский',
-    ageLimit: 18,
-    tags: ['арт', 'вино', 'релакс'],
-    stats: 1200,
-    image:
-      'https://images.unsplash.com/photo-1551735109-77bc97063d39?q=80&w=800&auto=format&fit=crop',
-    addedAt: '2026-01-22',
-    fullDescription: 'Мастер-класс по живописи вином в уютной атмосфере.',
-    organizerName: 'Wine & Art Studio',
-    organizerAvatar:
-      'https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?q=80&w=200&auto=format&fit=crop',
-    timeRange: '18:00 — 20:30',
-  },
-  {
-    id: '21',
-    title: 'Конференция: Будущее AI',
-    date: '02 фев, 10:00',
-    timestamp: toTS('2026-02-02T10:00:00'),
-    location: 'Holiday Inn, Бостандыкский',
-    price: '12000₸',
-    priceValue: 12000,
-    categories: ['business', 'education'],
-    vibe: 'chill',
-    district: 'Бостандыкский',
-    ageLimit: 16,
-    tags: ['ai', 'технологии', 'it'],
-    stats: 2100,
-    image:
-      'https://images.unsplash.com/photo-1677442136019-21780ecad995?q=80&w=800&auto=format&fit=crop',
-    addedAt: '2026-01-15',
-    fullDescription: 'Крупнейшая IT-конференция года в Алматы.',
-    organizerName: 'AI Kazakhstan Community',
-    organizerAvatar:
-      'https://images.unsplash.com/photo-1552058544-f2b08422138a?q=80&w=200&auto=format&fit=crop',
-    timeRange: '10:00 — 18:00',
-  },
-  {
-    id: '7',
-    title: 'Техно-ночь в "Объекте"',
-    date: '31 янв, 23:00',
-    timestamp: toTS('2026-01-31T23:00:00'),
-    location: 'Клуб Объект, Турксибский',
-    price: '6000₸',
-    priceValue: 6000,
-    categories: ['music'],
-    vibe: 'party',
-    district: 'Турксибский',
-    ageLimit: 21,
-    tags: ['техно', 'ночь', 'рейв'],
-    stats: 3400,
-    image:
-      'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?q=80&w=800&auto=format&fit=crop',
-    addedAt: '2026-01-22',
-    fullDescription: 'Ночь качественного техно и полного погружения.',
-    organizerName: 'Object Club',
-    organizerAvatar:
-      'https://images.unsplash.com/photo-1514525253344-f81f1f74ec64?q=80&w=200&auto=format&fit=crop',
-    timeRange: '23:00 — 06:00',
-  },
-  {
-    id: '8',
-    title: 'Вечер джаза и вина',
-    date: '24 янв, 20:00',
-    timestamp: toTS('2026-01-24T20:00:00'),
-    location: 'EverJazz, Медеуский',
-    price: '8000₸',
-    priceValue: 8000,
-    categories: ['music'],
-    vibe: 'chill',
-    district: 'Медеуский',
-    ageLimit: 18,
-    tags: ['джаз', 'уют', 'вечер'],
-    stats: 450,
-    image:
-      'https://images.unsplash.com/photo-1511192303578-4a7ec582c3b0?q=80&w=800&auto=format&fit=crop',
-    addedAt: '2026-01-19',
-    fullDescription: 'Джазовый вечер с вином в уютной атмосфере.',
-    organizerName: 'EverJazz Club',
-    organizerAvatar:
-      'https://images.unsplash.com/photo-1511367461989-f85a21fda167?q=80&w=200&auto=format&fit=crop',
-    timeRange: '20:00 — 22:30',
-  },
-  {
-    id: '10',
-    title: 'Урок йоги в парке',
-    date: '25 янв, 08:00',
-    timestamp: toTS('2026-01-25T08:00:00'),
-    location: 'Парк 28 Панфиловцев, Алмалинский',
-    price: 'Бесплатно',
-    priceValue: 0,
-    categories: ['sport'],
-    vibe: 'chill',
-    district: 'Алмалинский',
-    ageLimit: 0,
-    tags: ['йога', 'утро', 'здоровье'],
-    stats: 120,
-    image:
-      'https://images.unsplash.com/photo-1506126613408-eca07ce68773?q=80&w=800&auto=format&fit=crop',
-    addedAt: '2026-01-22',
-    fullDescription: 'Бесплатная тренировка по хатха-йоге на свежем воздухе.',
-    organizerName: 'Yoga Family Almaty',
-    organizerAvatar:
-      'https://images.unsplash.com/photo-1517841905240-472988babdf9?q=80&w=200&auto=format&fit=crop',
-    timeRange: '08:00 — 09:30',
-  },
-  {
-    id: '14',
-    title: 'Бизнес-ланч с инвесторами',
-    date: '26 янв, 13:00',
-    timestamp: toTS('2026-01-26T13:00:00'),
-    location: 'Rixos, Медеуский',
-    price: '15000₸',
-    priceValue: 15000,
-    categories: ['business'],
-    vibe: 'chill',
-    district: 'Медеуский',
-    ageLimit: 18,
-    tags: ['нетворкинг', 'бизнес', 'инвестиции'],
-    stats: 95,
-    image:
-      'https://images.unsplash.com/photo-1467003909585-2f8a72700288?q=80&w=800&auto=format&fit=crop',
-    addedAt: '2026-01-22',
-    fullDescription: 'Закрытый нетворкинг-ланч для фаундеров и инвесторов.',
-    organizerName: 'Invest Network KZ',
-    organizerAvatar:
-      'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=200&auto=format&fit=crop',
-    timeRange: '13:00 — 15:00',
-  },
-  {
-    id: '17',
-    title: 'Стэндап: Открытый микрофон',
-    date: '24 янв, 21:00',
-    timestamp: toTS('2026-01-24T21:00:00'),
-    location: 'Central Bar, Алмалинский',
-    price: '2000₸',
-    priceValue: 2000,
-    categories: ['theater'],
-    vibe: 'party',
-    district: 'Алмалинский',
-    ageLimit: 18,
-    tags: ['юмор', 'стэндап', 'вечер'],
-    stats: 670,
-    image:
-      'https://images.unsplash.com/photo-1516280440614-37939bbacd81?q=80&w=800&auto=format&fit=crop',
-    addedAt: '2026-01-21',
-    fullDescription: 'Открытый микрофон с лучшими и начинающими комиками.',
-    organizerName: 'StandUp Almaty',
-    organizerAvatar:
-      'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?q=80&w=200&auto=format&fit=crop',
-    timeRange: '21:00 — 23:00',
-  },
-  {
-    id: '19',
-    title: 'Ночной каток на Медеу',
-    date: '24 янв, 22:00',
-    timestamp: toTS('2026-01-24T22:00:00'),
-    location: 'Каток Медеу, Медеуский',
-    price: '3000₸',
-    priceValue: 3000,
-    categories: ['sport'],
-    vibe: 'party',
-    district: 'Медеуский',
-    ageLimit: 6,
-    tags: ['коньки', 'ночь', 'актив'],
-    stats: 5600,
-    image:
-      'https://images.unsplash.com/photo-1516627145497-ae6968895b74?q=80&w=800&auto=format&fit=crop',
-    addedAt: '2026-01-20',
-    fullDescription: 'Ночное катание с музыкой и иллюминацией.',
-    organizerName: 'Medeu Complex',
-    organizerAvatar:
-      'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=200&auto=format&fit=crop',
-    timeRange: '22:00 — 00:00',
   },
 ];

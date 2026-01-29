@@ -6,169 +6,55 @@ import {
   ScrollView,
   TouchableOpacity,
   StatusBar,
-  Platform,
-  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { colors, spacing, borderRadius, typography } from '../theme/colors';
 import { useUserStore } from '../store/userStore';
 import { useEventStore } from '../store/eventStore';
 import { useToast } from '../components/ToastProvider';
 import EventCard from '../components/EventCard';
 
-// --------------------
-// Вспомогательные компоненты (в стиле ProfileScreen)
-// --------------------
-
-interface ProfileHeaderProps {
-  avatarInitials: string;
-  name: string;
-  location: string;
-  role: string;
-  bio?: string;
-  onEdit: () => void;
-}
-
-function ProfileHeader({
-  avatarInitials,
-  name,
-  location,
-  role,
-  bio,
-  onEdit,
-}: ProfileHeaderProps) {
-  return (
-    <View style={styles.profileHeaderContainer}>
-      <View style={styles.topRow}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{avatarInitials}</Text>
-        </View>
-
-        <View style={styles.infoColumn}>
-          <View style={styles.nameRow}>
-            <Text style={styles.name}>{name}</Text>
-            <View style={[styles.subscriptionBadge, styles.organizerBadge]}>
-              <Text style={styles.organizerBadgeText}>CREATOR</Text>
-            </View>
-          </View>
-
-          <Text style={styles.email}>{location}</Text>
-          <Text style={styles.role}>{role}</Text>
-        </View>
-      </View>
-
-      {bio ? (
-        <View style={styles.bioContainer}>
-          <Text style={styles.bioText}>{bio}</Text>
-        </View>
-      ) : null}
-
-      <TouchableOpacity style={styles.editButton} onPress={onEdit}>
-        <Text style={styles.editButtonText}>Настроить профиль студии</Text>
-      </TouchableOpacity>
-    </View>
-  );
-}
-
-function ProfileStats({
-  revenue,
-  ticketsSold,
-  totalViews,
-}: {
-  revenue: string;
-  ticketsSold: number;
-  totalViews: number;
-}) {
-  const stats = [
-    {
-      icon: 'cash-outline' as const,
-      value: revenue,
-      label: 'Баланс',
-    },
-    {
-      icon: 'ticket-outline' as const,
-      value: ticketsSold.toString(),
-      label: 'Продано',
-    },
-    {
-      icon: 'trending-up-outline' as const,
-      value: totalViews.toString(),
-      label: 'Охват',
-    },
-  ];
-
-  return (
-    <View style={styles.statsGrid}>
-      {stats.map((stat, index) => (
-        <View key={index} style={styles.statCard}>
-          <Ionicons name={stat.icon} size={24} color={colors.light.primary} />
-          <Text style={styles.statValue}>{stat.value}</Text>
-          <Text style={styles.statLabel}>{stat.label}</Text>
-        </View>
-      ))}
-    </View>
-  );
-}
-
-function ProfileSectionList({
-  sections,
-  onSectionPress,
-  onLogout,
-}: {
-  sections: any[];
-  onSectionPress?: (id: string) => void;
-  onLogout: () => void;
-}) {
-  return (
-    <View style={styles.sectionsContainer}>
-      {sections.map(section => (
-        <TouchableOpacity
-          key={section.id}
-          style={styles.sectionItem}
-          onPress={() => onSectionPress?.(section.id)}
-        >
-          <View style={styles.sectionIconContainer}>
-            <Ionicons name={section.icon} size={20} color={colors.light.primary} />
-          </View>
-          <Text style={styles.menuItemText}>{section.title}</Text>
-          <Ionicons
-            name="chevron-forward"
-            size={18}
-            color={colors.light.mutedForeground}
-          />
-        </TouchableOpacity>
-      ))}
-      <TouchableOpacity
-        style={[styles.sectionItem, { borderBottomWidth: 0 }]}
-        onPress={onLogout}
-      >
-        <View style={styles.sectionIconContainer}>
-          <Ionicons name="log-out-outline" size={20} color="#EF4444" />
-        </View>
-        <Text style={[styles.menuItemText, { color: '#EF4444' }]}>Выйти из аккаунта</Text>
-      </TouchableOpacity>
-    </View>
-  );
-}
-
-export default function OrganizerProfileScreen({
-  onSettings,
-  onEdit,
-}: {
-  onSettings?: () => void;
-  onEdit?: () => void;
-}) {
+export default function OrganizerProfileScreen() {
   const navigation = useNavigation<any>();
-  const { user, logout, clearAllData } = useUserStore();
+  const route = useRoute<any>();
+  const {
+    user: currentUser,
+    logout,
+    clearAllData,
+    registeredUsers,
+    toggleFollow,
+    isFollowing,
+  } = useUserStore();
   const { events, clearAllEvents } = useEventStore();
   const { showToast } = useToast();
 
-  // Аналитика
+  const routeOrganizerId = route.params?.organizerId;
+
+  // Жесткое разделение: Организатор видит СВОЮ студию, Исследователь — только чужой профиль
+  const isOwnProfile =
+    currentUser.userType === 'organizer' &&
+    (!routeOrganizerId || routeOrganizerId === currentUser.id);
+
+  const organizerData = useMemo(() => {
+    if (isOwnProfile) return currentUser;
+    const found = registeredUsers.find(u => u.id === routeOrganizerId);
+    if (found) return found;
+
+    // Если это мок-автор, берем данные из параметров
+    return {
+      id: routeOrganizerId,
+      name: route.params?.organizerName || 'Организатор',
+      avatarInitials: (route.params?.organizerName || 'OR')[0].toUpperCase(),
+      location: 'Алматы',
+      avatarUrl: route.params?.organizerAvatar || null,
+    };
+  }, [isOwnProfile, routeOrganizerId, registeredUsers, currentUser, route.params]);
+
   const myEvents = useMemo(
-    () => events.filter(e => e.organizerId === user.id),
-    [events, user.id]
+    () => events.filter(e => e.organizerId === organizerData.id),
+    [events, organizerData.id]
   );
 
   const totalViews = useMemo(
@@ -176,38 +62,18 @@ export default function OrganizerProfileScreen({
     [myEvents]
   );
 
-  const ticketsSold = useMemo(() => Math.floor(totalViews * 0.15), [totalViews]);
+  const following = isFollowing(organizerData.id);
 
-  const revenueFormatted = useMemo(() => {
-    const rev = myEvents.reduce(
-      (acc, curr) =>
-        acc + (curr.priceValue || 0) * (ticketsSold / (myEvents.length || 1)),
-      0
-    );
-    return `${Math.round(rev).toLocaleString()} ₸`;
-  }, [myEvents, ticketsSold]);
-
-  const studioTools = [
-    { id: 'create', title: 'Опубликовать мероприятие', icon: 'add-circle-outline' },
-    { id: 'analytics', title: 'Аналитика продаж', icon: 'bar-chart-outline' },
-    { id: 'finance', title: 'Финансы и выплаты', icon: 'wallet-outline' },
-    { id: 'audience', title: 'Управление аудиторией', icon: 'people-outline' },
-  ];
-
-  const handleBackPress = () => {
-    if (navigation.canGoBack()) {
-      navigation.goBack();
-    } else {
-      navigation.navigate('MainTabs', { screen: 'Home' });
+  const handleFollow = () => {
+    if (currentUser.userType !== 'explorer') {
+      showToast({ message: 'Только исследователи могут подписываться', type: 'error' });
+      return;
     }
-  };
-
-  const handleSectionPress = (id: string) => {
-    if (id === 'create') {
-      navigation.navigate('CreateEvent');
-    } else {
-      console.log('Tool:', id);
-    }
+    toggleFollow(organizerData.id);
+    showToast({
+      message: following ? 'Вы отписались' : 'Вы подписались на автора',
+      type: 'success',
+    });
   };
 
   const handleLogout = () => {
@@ -215,82 +81,178 @@ export default function OrganizerProfileScreen({
     showToast({ message: 'Вы вышли из аккаунта', type: 'info' });
   };
 
-  const handleSecretClear = async () => {
-    await clearAllData();
-    await clearAllEvents(); // Исправлено: теперь чистит и мероприятия
-    showToast({ message: 'Данные сброшены', type: 'success' });
-  };
+  const tools = [
+    {
+      id: 'create',
+      title: 'Опубликовать мероприятие',
+      icon: 'add-circle-outline',
+      screen: 'CreateEvent',
+    },
+    {
+      id: 'analytics',
+      title: 'Аналитика продаж',
+      icon: 'bar-chart-outline',
+      screen: 'Analytics',
+    },
+    {
+      id: 'finance',
+      title: 'Финансы и выплаты',
+      icon: 'wallet-outline',
+      screen: 'Finance',
+    },
+  ];
 
   return (
     <SafeAreaView style={styles.fullContainer} edges={['top']}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.light.background} />
 
       <View style={styles.header}>
-        <TouchableOpacity style={styles.headerButtonLeft} onPress={handleBackPress}>
-          <Ionicons name="arrow-back" size={24} color={colors.light.foreground} />
-        </TouchableOpacity>
-
-        <Text style={styles.headerTitle}>Creator Studio</Text>
-
-        <TouchableOpacity style={styles.headerButtonRight} onPress={onSettings}>
-          <Ionicons name="settings-outline" size={24} color={colors.light.foreground} />
-        </TouchableOpacity>
+        <View style={styles.headerBtn}>
+          {(!isOwnProfile || navigation.canGoBack()) && (
+            <TouchableOpacity onPress={() => navigation.goBack()}>
+              <Ionicons name="arrow-back" size={24} color={colors.light.foreground} />
+            </TouchableOpacity>
+          )}
+        </View>
+        <Text style={styles.headerTitle}>
+          {isOwnProfile ? 'Creator Studio' : 'Профиль автора'}
+        </Text>
+        {isOwnProfile ? (
+          <TouchableOpacity
+            style={styles.headerBtn}
+            onPress={() => navigation.navigate('Settings')}
+          >
+            <Ionicons name="settings-outline" size={24} color={colors.light.foreground} />
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.headerBtn} />
+        )}
       </View>
 
-      <ScrollView
-        style={styles.container}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-      >
-        <ProfileHeader
-          avatarInitials={user.avatarInitials}
-          name={user.name}
-          location={user.location}
-          role="Организатор мероприятий"
-          bio={user.bio}
-          onEdit={onEdit || (() => {})}
-        />
+      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+        <View style={styles.profileHeaderContainer}>
+          <View style={styles.topRow}>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>{organizerData.avatarInitials}</Text>
+            </View>
+            <View style={styles.infoColumn}>
+              <View style={styles.nameRow}>
+                <Text style={styles.name}>{organizerData.name}</Text>
+                <View style={styles.organizerBadge}>
+                  <Text style={styles.organizerBadgeText}>CREATOR</Text>
+                </View>
+              </View>
+              <Text style={styles.email}>{organizerData.location || 'Алматы'}</Text>
+              <Text style={styles.role}>Организатор мероприятий</Text>
+            </View>
+          </View>
 
-        <ProfileStats
-          revenue={revenueFormatted}
-          ticketsSold={ticketsSold}
-          totalViews={totalViews}
-        />
-
-        <View style={styles.toolHeader}>
-          <Text style={styles.sectionHeaderTitle}>Инструменты студии</Text>
+          {isOwnProfile ? (
+            <TouchableOpacity
+              style={styles.editButton}
+              onPress={() => navigation.navigate('EditStudio')}
+            >
+              <Text style={styles.editButtonText}>Настроить профиль студии</Text>
+            </TouchableOpacity>
+          ) : (
+            currentUser.userType === 'explorer' && (
+              <TouchableOpacity
+                style={[styles.followBtn, following && styles.followBtnActive]}
+                onPress={handleFollow}
+              >
+                <Ionicons
+                  name={following ? 'checkmark-circle' : 'person-add-outline'}
+                  size={18}
+                  color={following ? colors.light.foreground : colors.light.background}
+                />
+                <Text
+                  style={[styles.followBtnText, following && styles.followBtnTextActive]}
+                >
+                  {following ? 'Вы подписаны' : 'Подписаться'}
+                </Text>
+              </TouchableOpacity>
+            )
+          )}
         </View>
-        <ProfileSectionList
-          sections={studioTools}
-          onSectionPress={handleSectionPress}
-          onLogout={handleLogout}
-        />
+
+        {isOwnProfile && (
+          <>
+            <View style={styles.statsGrid}>
+              <View style={styles.statCard}>
+                <Ionicons name="cash-outline" size={20} color={colors.light.primary} />
+                <Text style={styles.statValue}>0 ₸</Text>
+                <Text style={styles.statLabel}>Баланс</Text>
+              </View>
+              <View style={styles.statCard}>
+                <Ionicons name="ticket-outline" size={20} color={colors.light.primary} />
+                <Text style={styles.statValue}>0</Text>
+                <Text style={styles.statLabel}>Продано</Text>
+              </View>
+              <View style={styles.statCard}>
+                <Ionicons
+                  name="trending-up-outline"
+                  size={20}
+                  color={colors.light.primary}
+                />
+                <Text style={styles.statValue}>{totalViews}</Text>
+                <Text style={styles.statLabel}>Охват</Text>
+              </View>
+            </View>
+
+            <View style={styles.toolHeader}>
+              <Text style={styles.sectionHeaderTitle}>Инструменты студии</Text>
+            </View>
+
+            <View style={styles.sectionsContainer}>
+              {tools.map(tool => (
+                <TouchableOpacity
+                  key={tool.id}
+                  style={styles.sectionItem}
+                  onPress={() => navigation.navigate(tool.screen)}
+                >
+                  <View style={styles.sectionIconContainer}>
+                    <Ionicons
+                      name={tool.icon as any}
+                      size={20}
+                      color={colors.light.primary}
+                    />
+                  </View>
+                  <Text style={styles.menuItemText}>{tool.title}</Text>
+                  <Ionicons
+                    name="chevron-forward"
+                    size={16}
+                    color={colors.light.mutedForeground}
+                  />
+                </TouchableOpacity>
+              ))}
+              <TouchableOpacity
+                style={[styles.sectionItem, { borderBottomWidth: 0 }]}
+                onPress={handleLogout}
+              >
+                <View style={styles.sectionIconContainer}>
+                  <Ionicons name="log-out-outline" size={20} color="#EF4444" />
+                </View>
+                <Text style={[styles.menuItemText, { color: '#EF4444' }]}>
+                  Выйти из аккаунта
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </>
+        )}
 
         <View style={styles.publicationsHeader}>
           <Text style={styles.sectionHeaderTitle}>
-            Мои публикации ({myEvents.length})
+            {isOwnProfile ? 'Мои публикации' : 'Мероприятия автора'} ({myEvents.length})
           </Text>
         </View>
 
         <View style={styles.eventsList}>
-          {myEvents.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Ionicons
-                name="document-text-outline"
-                size={48}
-                color={colors.light.mutedForeground}
-              />
-              <Text style={styles.emptyTitle}>У вас пока нет публикаций</Text>
-              <Text style={styles.emptyDescription}>
-                Создайте свое первое мероприятие, чтобы оно появилось здесь
-              </Text>
-            </View>
-          ) : (
+          {myEvents.length > 0 ? (
             myEvents.map(event => (
               <View key={event.id} style={styles.eventWrapper}>
                 <EventCard
                   {...event}
-                  style={styles.card}
+                  style={{ width: '100%', borderWidth: 0 }}
                   onPress={() => navigation.navigate('EventDetail', { ...event })}
                 />
                 <View style={styles.eventStatsRow}>
@@ -302,30 +264,42 @@ export default function OrganizerProfileScreen({
                     />
                     <Text style={styles.miniStatText}>{event.stats || 0} просмотров</Text>
                   </View>
-                  <TouchableOpacity
-                    onPress={() => navigation.navigate('CreateEvent', { event })}
-                    style={styles.editIconBtn}
-                  >
-                    <Ionicons
-                      name="create-outline"
-                      size={16}
-                      color={colors.light.primary}
-                    />
-                    <Text style={styles.editText}>Редактировать</Text>
-                  </TouchableOpacity>
+                  {isOwnProfile && (
+                    <TouchableOpacity
+                      onPress={() => navigation.navigate('CreateEvent', { event })}
+                      style={styles.editIconBtn}
+                    >
+                      <Ionicons
+                        name="create-outline"
+                        size={16}
+                        color={colors.light.primary}
+                      />
+                      <Text style={styles.editText}>Редактировать</Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
               </View>
             ))
+          ) : (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyText}>Публикаций пока нет</Text>
+            </View>
           )}
         </View>
 
-        <View style={styles.secretContainer}>
-          <TouchableOpacity onPress={handleSecretClear} activeOpacity={0.7}>
-            <Text style={styles.secretText}>v.1.0.4-production-build-stable-reset</Text>
+        {isOwnProfile && (
+          <TouchableOpacity
+            onPress={async () => {
+              await clearAllData();
+              await clearAllEvents();
+              showToast({ message: 'Данные сброшены', type: 'success' });
+            }}
+            style={styles.resetTrigger}
+          >
+            <Text style={styles.resetText}>v.1.0.4-production-reset</Text>
           </TouchableOpacity>
-        </View>
-
-        <View style={styles.bottomSpacer} />
+        )}
+        <View style={{ height: 40 }} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -341,183 +315,126 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     borderBottomWidth: 1,
     borderBottomColor: colors.light.border,
-    backgroundColor: colors.light.background,
   },
-  headerButtonLeft: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'flex-start',
-  },
-  headerButtonRight: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'flex-end',
-  },
+  headerBtn: { width: 40, height: 40, justifyContent: 'center' },
   headerTitle: {
-    flex: 1,
-    fontSize: typography.xl,
+    fontSize: typography.lg,
     fontWeight: '700',
     color: colors.light.foreground,
-    textAlign: 'center',
   },
   container: { flex: 1 },
-  scrollContent: { paddingBottom: spacing['2xl'] },
-  profileHeaderContainer: {
-    padding: spacing.lg,
-    backgroundColor: colors.light.background,
-  },
-  topRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg },
+  profileHeaderContainer: { paddingHorizontal: spacing.lg, paddingTop: spacing.md },
+  topRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: borderRadius.full,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     backgroundColor: colors.light.secondary,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarText: {
-    fontSize: typography['2xl'],
-    fontWeight: '600',
-    color: colors.light.foreground,
+  avatarText: { fontSize: 24, fontWeight: '700' },
+  infoColumn: { flex: 1 },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  name: { fontSize: 18, fontWeight: '700' },
+  organizerBadge: {
+    backgroundColor: colors.light.primary,
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+    borderRadius: 4,
   },
-  infoColumn: { flex: 1, justifyContent: 'center' },
-  nameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    flexWrap: 'wrap',
-  },
-  name: { fontSize: typography.xl, fontWeight: '700', color: colors.light.foreground },
-  subscriptionBadge: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
-    borderRadius: borderRadius.md,
-  },
-  organizerBadge: { backgroundColor: colors.light.primary },
-  organizerBadgeText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: colors.light.primaryForeground,
-  },
-  email: { fontSize: typography.sm, color: colors.light.mutedForeground, marginTop: 2 },
-  role: { fontSize: typography.sm, color: colors.light.mutedForeground, marginTop: 2 },
-  bioContainer: { marginTop: spacing.md },
-  bioText: { fontSize: typography.base, color: colors.light.foreground, lineHeight: 20 },
+  organizerBadgeText: { color: '#fff', fontSize: 9, fontWeight: '800' },
+  email: { color: colors.light.mutedForeground, fontSize: 13, marginTop: 1 },
+  role: { color: colors.light.mutedForeground, fontSize: 11 },
   editButton: {
     marginTop: spacing.md,
-    backgroundColor: colors.light.card,
+    padding: 10,
+    borderRadius: borderRadius.lg,
     borderWidth: 1,
     borderColor: colors.light.border,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.md,
+    alignItems: 'center',
+  },
+  editButtonText: { fontWeight: '700', fontSize: 14 },
+  followBtn: {
+    marginTop: spacing.md,
+    padding: 12,
+    borderRadius: borderRadius.lg,
+    backgroundColor: colors.light.foreground,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 8,
   },
-  editButtonText: {
-    fontSize: typography.sm,
-    fontWeight: '600',
-    color: colors.light.foreground,
+  followBtnActive: {
+    backgroundColor: colors.light.secondary,
+    borderWidth: 1,
+    borderColor: colors.light.border,
   },
+  followBtnText: { color: colors.light.background, fontWeight: '700', fontSize: 14 },
+  followBtnTextActive: { color: colors.light.foreground },
   statsGrid: {
     flexDirection: 'row',
     paddingHorizontal: spacing.lg,
-    gap: spacing.md,
-    marginBottom: spacing.lg,
+    gap: spacing.sm,
+    marginVertical: spacing.md,
   },
   statCard: {
     flex: 1,
+    padding: spacing.sm,
     backgroundColor: colors.light.card,
-    borderRadius: borderRadius.lg,
-    padding: spacing.md,
+    borderRadius: borderRadius.xl,
     alignItems: 'center',
-    elevation: 1,
+    borderWidth: 1,
+    borderColor: colors.light.border,
   },
-  statValue: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.light.foreground,
-    marginTop: spacing.sm,
-  },
-  statLabel: {
-    fontSize: typography.xs,
-    color: colors.light.mutedForeground,
-    marginTop: 2,
-  },
-  toolHeader: { paddingHorizontal: spacing.lg, marginBottom: spacing.sm },
+  statValue: { fontSize: 16, fontWeight: '700', marginTop: 4 },
+  statLabel: { fontSize: 11, color: colors.light.mutedForeground },
+  toolHeader: { paddingHorizontal: spacing.lg, marginBottom: 4 },
   publicationsHeader: {
     paddingHorizontal: spacing.lg,
     marginTop: spacing.lg,
-    marginBottom: spacing.md,
+    marginBottom: 8,
   },
-  sectionHeaderTitle: {
-    fontSize: typography.lg,
-    fontWeight: '600',
-    color: colors.light.foreground,
-  },
+  sectionHeaderTitle: { fontSize: 16, fontWeight: '700' },
   sectionsContainer: {
     marginHorizontal: spacing.lg,
     backgroundColor: colors.light.card,
-    borderRadius: borderRadius.lg,
-    overflow: 'hidden',
+    borderRadius: borderRadius.xl,
     borderWidth: 1,
     borderColor: colors.light.border,
+    overflow: 'hidden',
   },
   sectionItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
+    padding: 12,
     borderBottomWidth: 1,
     borderBottomColor: colors.light.border,
   },
-  sectionIconContainer: { width: 32, alignItems: 'flex-start' },
-  menuItemText: {
-    flex: 1,
-    fontSize: typography.sm,
-    color: colors.light.foreground,
-    fontWeight: '600',
-  },
+  sectionIconContainer: { width: 28 },
+  menuItemText: { flex: 1, fontWeight: '600', fontSize: 14 },
   eventsList: { paddingHorizontal: spacing.lg },
   eventWrapper: {
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
     backgroundColor: colors.light.card,
     borderRadius: borderRadius.xl,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: colors.light.border,
   },
-  card: { width: '100%', marginBottom: 0, borderWidth: 0, borderRadius: 0 },
   eventStatsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: spacing.md,
+    padding: 10,
     backgroundColor: `${colors.light.primary}05`,
   },
   miniStat: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  miniStatText: { fontSize: 12, color: colors.light.mutedForeground, fontWeight: '600' },
+  miniStatText: { fontSize: 11, color: colors.light.mutedForeground },
   editIconBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  editText: { fontSize: 12, color: colors.light.primary, fontWeight: '700' },
-  emptyState: { alignItems: 'center', paddingVertical: 40 },
-  emptyTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.light.foreground,
-    marginTop: 12,
-  },
-  emptyDescription: {
-    fontSize: 14,
-    color: colors.light.mutedForeground,
-    textAlign: 'center',
-    marginTop: 4,
-  },
-  secretContainer: { marginTop: spacing['2xl'], alignItems: 'center', opacity: 0.3 },
-  secretText: {
-    fontSize: 10,
-    color: colors.light.mutedForeground,
-    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
-  },
-  bottomSpacer: { height: 40 },
+  editText: { fontSize: 11, color: colors.light.primary, fontWeight: '700' },
+  emptyState: { padding: 30, alignItems: 'center' },
+  emptyText: { color: colors.light.mutedForeground, fontSize: 13 },
+  resetTrigger: { marginTop: 30, alignItems: 'center', opacity: 0.15 },
+  resetText: { fontSize: 9 },
 });

@@ -6,211 +6,25 @@ import {
   ScrollView,
   TouchableOpacity,
   StatusBar,
-  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { colors, spacing, borderRadius, typography } from '../theme/colors';
 import { useUserStore } from '../store/userStore';
-import { useEventStore } from '../store/eventStore'; // Добавлен импорт
+import { useEventStore } from '../store/eventStore';
 import { useToast } from '../components/ToastProvider';
 
-// Импорт новых компонентов списка
 import FavoritesList from '../components/ProfileComponents/FavoritesList';
 import TicketsList from '../components/ProfileComponents/TicketsList';
 
-// --------------------
-// Типы
-// --------------------
-interface ProfileSection {
-  id: string;
-  title: string;
-  icon: keyof typeof Ionicons.glyphMap;
-}
-
-interface ProfileScreenProps {
-  activeTab?: 'tickets' | 'favorites';
-  profileSections?: ProfileSection[];
-  onTabChange?: (tab: 'tickets' | 'favorites') => void;
-  onSettings?: () => void;
-  onEdit?: () => void;
-  onBecomeOrganizer?: () => void;
-  onSectionPress?: (sectionId: string) => void;
-  onSubscriptionPress?: () => void;
-}
-
-// --------------------
-// Вспомогательные компоненты
-// --------------------
-
-interface ProfileHeaderProps {
-  avatarInitials: string;
-  name: string;
-  email: string;
-  role: string;
-  subscriptionStatus?: 'none' | 'basic' | 'premium';
-  bio?: string;
-  onEdit: () => void;
-  onSubscriptionPress?: () => void;
-}
-
-function ProfileHeader({
-  avatarInitials,
-  name,
-  email,
-  role,
-  subscriptionStatus,
-  bio,
-  onEdit,
-  onSubscriptionPress,
-}: ProfileHeaderProps) {
-  const showSubscriptionBadge = subscriptionStatus && subscriptionStatus !== 'none';
-
-  return (
-    <View style={styles.profileHeaderContainer}>
-      <View style={styles.topRow}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{avatarInitials}</Text>
-        </View>
-
-        <View style={styles.infoColumn}>
-          <View style={styles.nameRow}>
-            <Text style={styles.name}>{name}</Text>
-            {showSubscriptionBadge && (
-              <TouchableOpacity onPress={onSubscriptionPress}>
-                <View style={[styles.subscriptionBadge, styles.premiumBadge]}>
-                  <Text style={styles.premiumText}>
-                    {subscriptionStatus === 'premium' ? 'PREMIUM' : 'BASIC'}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            )}
-          </View>
-
-          <Text style={styles.email}>{email}</Text>
-          <Text style={styles.role}>{role}</Text>
-        </View>
-      </View>
-
-      {bio ? (
-        <View style={styles.bioContainer}>
-          <Text style={styles.bioText}>{bio}</Text>
-        </View>
-      ) : null}
-
-      <TouchableOpacity style={styles.editButton} onPress={onEdit}>
-        <Text style={styles.editButtonText}>Редактировать профиль</Text>
-      </TouchableOpacity>
-    </View>
-  );
-}
-
-function ProfileStats({
-  eventsAttended,
-  eventsSaved,
-  communitiesJoined,
-}: {
-  eventsAttended: number;
-  eventsSaved: number;
-  communitiesJoined: number;
-}) {
-  const stats = [
-    {
-      icon: 'calendar-outline' as const,
-      value: eventsAttended.toString(),
-      label: 'Билетов',
-    },
-    {
-      icon: 'bookmark-outline' as const,
-      value: eventsSaved.toString(),
-      label: 'Сохранено',
-    },
-    {
-      icon: 'people-outline' as const,
-      value: communitiesJoined.toString(),
-      label: 'Сообщества',
-    },
-  ];
-
-  return (
-    <View style={styles.statsGrid}>
-      {stats.map((stat, index) => (
-        <View key={index} style={styles.statCard}>
-          <Ionicons name={stat.icon} size={24} color={colors.light.primary} />
-          <Text style={styles.statValue}>{stat.value}</Text>
-          <Text style={styles.statLabel}>{stat.label}</Text>
-        </View>
-      ))}
-    </View>
-  );
-}
-
-function InterestTags({ interests }: { interests: string[] }) {
-  return (
-    <View style={styles.interestsSection}>
-      <Text style={styles.sectionHeaderTitle}>Интересы</Text>
-      <View style={styles.interestsContainer}>
-        {interests.map((interest, index) => (
-          <View key={index} style={styles.interestBadge}>
-            <Text style={styles.interestText}>{interest}</Text>
-          </View>
-        ))}
-      </View>
-    </View>
-  );
-}
-
-function ProfileSectionList({
-  sections,
-  onSectionPress,
-  onLogout,
-}: {
-  sections: ProfileSection[];
-  onSectionPress?: (sectionId: string) => void;
-  onLogout: () => void;
-}) {
-  return (
-    <View style={styles.sectionsContainer}>
-      {sections.map(section => (
-        <TouchableOpacity
-          key={section.id}
-          style={styles.sectionItem}
-          onPress={() => onSectionPress?.(section.id)}
-        >
-          <View style={styles.sectionIconContainer}>
-            <Ionicons name={section.icon} size={20} color={colors.light.primary} />
-          </View>
-          <Text style={styles.menuItemText}>{section.title}</Text>
-          <Ionicons
-            name="chevron-forward"
-            size={18}
-            color={colors.light.mutedForeground}
-          />
-        </TouchableOpacity>
-      ))}
-      <TouchableOpacity
-        style={[styles.sectionItem, { borderBottomWidth: 0 }]}
-        onPress={onLogout}
-      >
-        <View style={styles.sectionIconContainer}>
-          <Ionicons name="log-out-outline" size={20} color="#EF4444" />
-        </View>
-        <Text style={[styles.menuItemText, { color: '#EF4444' }]}>Выйти из аккаунта</Text>
-      </TouchableOpacity>
-    </View>
-  );
-}
-
-export default function ProfileScreen(props: ProfileScreenProps) {
+export default function ProfileScreen() {
   const navigation = useNavigation<any>();
   const { user, logout, clearAllData, becomeOrganizer } = useUserStore();
-  const { clearAllEvents } = useEventStore(); // Деструктуризация метода очистки событий
+  const { clearAllEvents } = useEventStore();
   const { showToast } = useToast();
 
-  const [activeTab, setActiveTab] = useState<'tickets' | 'favorites'>(
-    props.activeTab || 'tickets'
-  );
+  const [activeTab, setActiveTab] = useState<'tickets' | 'favorites'>('tickets');
 
   const {
     avatarInitials,
@@ -219,140 +33,152 @@ export default function ProfileScreen(props: ProfileScreenProps) {
     role,
     userType,
     subscriptionStatus,
-    bio,
     interests,
     stats,
     savedEventIds,
     purchasedTickets,
   } = user;
 
-  const profileSections = props.profileSections || [
-    { id: 'subscriptions', title: 'Подписки', icon: 'card-outline' },
-    { id: 'saved_events', title: 'Сохраненные события', icon: 'bookmark-outline' },
-    { id: 'my_communities', title: 'Мои сообщества', icon: 'people-outline' },
-    {
-      id: 'my_posts',
-      title: 'Мои посты и комментарии',
-      icon: 'chatbox-ellipses-outline',
-    },
-    { id: 'settings', title: 'Настройки', icon: 'settings-outline' },
-  ];
-
-  const handleBackPress = () => {
-    if (navigation.canGoBack()) {
-      navigation.goBack();
-    } else {
-      navigation.navigate('MainTabs', { screen: 'Home' });
-    }
+  const handleLogout = () => {
+    logout();
+    showToast({ message: 'Вы вышли из аккаунта', type: 'info' });
   };
-
-  const openSettings = () =>
-    props.onSettings ? props.onSettings() : console.log('Settings');
-  const editProfile = () => props.onEdit?.();
 
   const handleBecomeOrganizer = () => {
     becomeOrganizer();
-    showToast({
-      message: 'Поздравляем! Теперь вы организатор.',
-      type: 'success',
-    });
-  };
-
-  const handleSectionPress = (id: string) => {
-    if (id === 'saved_events') {
-      navigation.navigate('SavedEvents');
-      return;
-    }
-    props.onSectionPress?.(id);
-  };
-
-  const handleSubscriptionPress = () =>
-    props.onSubscriptionPress
-      ? props.onSubscriptionPress()
-      : handleSectionPress('subscriptions');
-
-  const handleLogout = () => {
-    const performLogout = () => {
-      logout();
-      showToast({ message: 'Вы вышли из аккаунта', type: 'info' });
-    };
-
-    if (Platform.OS === 'web') {
-      const confirmed = window.confirm('Вы уверены, что хотите выйти из аккаунта?');
-      if (confirmed) performLogout();
-    } else {
-      performLogout();
-    }
+    showToast({ message: 'Теперь вы организатор!', type: 'success' });
   };
 
   const handleSecretClear = async () => {
-    const performClear = async () => {
-      await clearAllData();
-      await clearAllEvents(); // Теперь события тоже очищаются
-      showToast({ message: 'Все данные успешно сброшены', type: 'success' });
-    };
-
-    if (Platform.OS === 'web') {
-      if (window.confirm('Это удалит все локальные данные. Продолжить?')) {
-        await performClear();
-      }
-    } else {
-      await performClear();
-    }
+    await clearAllData();
+    await clearAllEvents();
+    showToast({ message: 'Данные успешно сброшены', type: 'success' });
   };
+
+  const menuItems = [
+    {
+      id: 'subscriptions',
+      title: 'Подписки',
+      icon: 'card-outline',
+      screen: 'Subscriptions',
+    },
+    // Пункт только для исследователей
+    ...(userType === 'explorer'
+      ? [
+          {
+            id: 'followed_organizers',
+            title: 'Мои авторы',
+            icon: 'heart-outline',
+            screen: 'FollowedOrganizers',
+          },
+        ]
+      : []),
+    {
+      id: 'saved_events',
+      title: 'Сохраненные события',
+      icon: 'bookmark-outline',
+      screen: 'SavedEvents',
+    },
+    {
+      id: 'my_communities',
+      title: 'Мои сообщества',
+      icon: 'people-outline',
+      screen: 'Communities',
+    },
+    { id: 'settings', title: 'Настройки', icon: 'settings-outline', screen: 'Settings' },
+  ];
 
   return (
     <SafeAreaView style={styles.fullContainer} edges={['top']}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.light.background} />
 
       <View style={styles.header}>
-        <TouchableOpacity style={styles.headerButtonLeft} onPress={handleBackPress}>
+        {/* КНОПКА НАЗАД ДОБАВЛЕНА ТУТ */}
+        <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={24} color={colors.light.foreground} />
         </TouchableOpacity>
-
         <Text style={styles.headerTitle}>Профиль</Text>
-
-        <TouchableOpacity style={styles.headerButtonRight} onPress={openSettings}>
+        <TouchableOpacity
+          style={styles.headerBtn}
+          onPress={() => navigation.navigate('Settings')}
+        >
           <Ionicons name="settings-outline" size={24} color={colors.light.foreground} />
         </TouchableOpacity>
       </View>
 
-      <ScrollView
-        style={styles.container}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-      >
-        <ProfileHeader
-          avatarInitials={avatarInitials}
-          name={name}
-          email={email}
-          role={role}
-          subscriptionStatus={subscriptionStatus}
-          bio={bio}
-          onEdit={editProfile}
-          onSubscriptionPress={handleSubscriptionPress}
-        />
+      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+        <View style={styles.profileHeaderContainer}>
+          <View style={styles.topRow}>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>{avatarInitials}</Text>
+            </View>
+            <View style={styles.infoColumn}>
+              <View style={styles.nameRow}>
+                <Text style={styles.name}>{name}</Text>
+                {subscriptionStatus && subscriptionStatus !== 'none' && (
+                  <View style={styles.premiumBadge}>
+                    <Text style={styles.premiumText}>
+                      {subscriptionStatus.toUpperCase()}
+                    </Text>
+                  </View>
+                )}
+              </View>
+              <Text style={styles.email}>{email}</Text>
+              <Text style={styles.role}>{role}</Text>
+            </View>
+          </View>
 
-        <ProfileStats
-          eventsAttended={purchasedTickets.length}
-          eventsSaved={savedEventIds.length}
-          communitiesJoined={stats.communitiesJoined}
-        />
+          <TouchableOpacity
+            style={styles.editButton}
+            onPress={() => navigation.navigate('EditProfile')}
+          >
+            <Text style={styles.editButtonText}>Редактировать профиль</Text>
+          </TouchableOpacity>
+        </View>
 
-        <InterestTags interests={interests} />
+        <View style={styles.statsGrid}>
+          <View style={styles.statCard}>
+            <Ionicons name="calendar-outline" size={20} color={colors.light.primary} />
+            <Text style={styles.statValue}>{purchasedTickets.length}</Text>
+            <Text style={styles.statLabel}>Билетов</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Ionicons name="bookmark-outline" size={20} color={colors.light.primary} />
+            <Text style={styles.statValue}>{savedEventIds.length}</Text>
+            <Text style={styles.statLabel}>Сохранено</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Ionicons name="people-outline" size={20} color={colors.light.primary} />
+            <Text style={styles.statValue}>{stats.communitiesJoined}</Text>
+            <Text style={styles.statLabel}>Сообщества</Text>
+          </View>
+        </View>
+
+        {userType === 'explorer' && (
+          <View style={styles.interestsSection}>
+            <Text style={styles.sectionHeaderTitle}>Интересы</Text>
+            <View style={styles.interestsContainer}>
+              {interests.map((interest, index) => (
+                <View key={index} style={styles.interestBadge}>
+                  <Text style={styles.interestText}>{interest}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
 
         {userType !== 'organizer' && (
           <View style={styles.creatorCard}>
             <View style={styles.creatorContent}>
               <View style={styles.creatorIcon}>
-                <Ionicons name="sparkles" size={20} color={colors.light.primary} />
+                <Ionicons name="sparkles" size={18} color={colors.light.primary} />
               </View>
-              <View style={styles.creatorText}>
+              <View style={{ flex: 1 }}>
                 <Text style={styles.creatorTitle}>
                   Хотите создавать свои мероприятия?
                 </Text>
                 <Text style={styles.creatorDescription}>
-                  Станьте организатором и получите доступ к Creator Studio
+                  Станьте организатором и получите доступ к Studio
                 </Text>
               </View>
             </View>
@@ -361,20 +187,45 @@ export default function ProfileScreen(props: ProfileScreenProps) {
               onPress={handleBecomeOrganizer}
             >
               <Text style={styles.creatorButtonText}>Стать организатором</Text>
-              <Ionicons
-                name="arrow-forward"
-                size={16}
-                color={colors.light.primaryForeground}
-              />
+              <Ionicons name="arrow-forward" size={16} color="#fff" />
             </TouchableOpacity>
           </View>
         )}
 
-        <ProfileSectionList
-          sections={profileSections}
-          onSectionPress={handleSectionPress}
-          onLogout={handleLogout}
-        />
+        <View style={styles.sectionsContainer}>
+          {menuItems.map(item => (
+            <TouchableOpacity
+              key={item.id}
+              style={styles.sectionItem}
+              onPress={() => navigation.navigate(item.screen)}
+            >
+              <View style={styles.sectionIconContainer}>
+                <Ionicons
+                  name={item.icon as any}
+                  size={20}
+                  color={colors.light.primary}
+                />
+              </View>
+              <Text style={styles.menuItemText}>{item.title}</Text>
+              <Ionicons
+                name="chevron-forward"
+                size={16}
+                color={colors.light.mutedForeground}
+              />
+            </TouchableOpacity>
+          ))}
+          <TouchableOpacity
+            style={[styles.sectionItem, { borderBottomWidth: 0 }]}
+            onPress={handleLogout}
+          >
+            <View style={styles.sectionIconContainer}>
+              <Ionicons name="log-out-outline" size={20} color="#EF4444" />
+            </View>
+            <Text style={[styles.menuItemText, { color: '#EF4444' }]}>
+              Выйти из аккаунта
+            </Text>
+          </TouchableOpacity>
+        </View>
 
         <View style={styles.tabsContainer}>
           <TouchableOpacity
@@ -387,7 +238,6 @@ export default function ProfileScreen(props: ProfileScreenProps) {
               Мои билеты
             </Text>
           </TouchableOpacity>
-
           <TouchableOpacity
             style={[styles.tab, activeTab === 'favorites' && styles.tabActive]}
             onPress={() => setActiveTab('favorites')}
@@ -395,30 +245,26 @@ export default function ProfileScreen(props: ProfileScreenProps) {
             <Text
               style={[styles.tabText, activeTab === 'favorites' && styles.tabTextActive]}
             >
-              Избранное
+              Сохраненное
             </Text>
           </TouchableOpacity>
         </View>
 
-        {activeTab === 'tickets' ? <TicketsList /> : <FavoritesList />}
-
-        <View style={styles.secretContainer}>
-          <TouchableOpacity onPress={handleSecretClear} activeOpacity={0.7}>
-            <Text style={styles.secretText}>v.1.0.4-production-build-stable-reset</Text>
-          </TouchableOpacity>
+        <View style={{ paddingHorizontal: spacing.lg }}>
+          {activeTab === 'tickets' ? <TicketsList /> : <FavoritesList />}
         </View>
 
-        <View style={styles.bottomSpacer} />
+        <TouchableOpacity onPress={handleSecretClear} style={styles.resetTrigger}>
+          <Text style={styles.resetText}>v.1.0.4-production-reset</Text>
+        </TouchableOpacity>
+        <View style={{ height: 40 }} />
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  fullContainer: {
-    flex: 1,
-    backgroundColor: colors.light.background,
-  },
+  fullContainer: { flex: 1, backgroundColor: colors.light.background },
   header: {
     height: 56,
     flexDirection: 'row',
@@ -427,272 +273,130 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     borderBottomWidth: 1,
     borderBottomColor: colors.light.border,
-    backgroundColor: colors.light.background,
   },
-  headerButtonLeft: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'flex-start',
-  },
-  headerButtonRight: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'flex-end',
-  },
+  headerBtn: { width: 40, height: 40, justifyContent: 'center' },
   headerTitle: {
-    flex: 1,
     fontSize: typography.xl,
     fontWeight: '700',
     color: colors.light.foreground,
-    textAlign: 'center',
-    includeFontPadding: false,
-    textAlignVertical: 'center',
   },
   container: { flex: 1 },
-  scrollContent: { paddingBottom: spacing['2xl'] },
-  profileHeaderContainer: {
-    padding: spacing.lg,
-    backgroundColor: colors.light.background,
-  },
-  topRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.lg,
-  },
+  profileHeaderContainer: { paddingHorizontal: spacing.lg, paddingTop: spacing.md },
+  topRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: borderRadius.full,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     backgroundColor: colors.light.secondary,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarText: {
-    fontSize: typography['2xl'],
-    fontWeight: '600',
-    color: colors.light.foreground,
-  },
-  infoColumn: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  nameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    flexWrap: 'wrap',
-  },
-  name: {
-    fontSize: typography.xl,
-    fontWeight: '700',
-    color: colors.light.foreground,
-  },
-  subscriptionBadge: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
-    borderRadius: borderRadius.md,
-  },
+  avatarText: { fontSize: 24, fontWeight: '700' },
+  infoColumn: { flex: 1 },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  name: { fontSize: 18, fontWeight: '700' },
   premiumBadge: {
     backgroundColor: colors.light.primary,
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+    borderRadius: 4,
   },
-  premiumText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: colors.light.primaryForeground,
-  },
-  email: {
-    fontSize: typography.sm,
-    color: colors.light.mutedForeground,
-    marginTop: 2,
-  },
-  role: {
-    fontSize: typography.sm,
-    color: colors.light.mutedForeground,
-    marginTop: 2,
-  },
-  bioContainer: {
-    marginTop: spacing.md,
-  },
-  bioText: {
-    fontSize: typography.base,
-    color: colors.light.foreground,
-    lineHeight: 20,
-  },
+  premiumText: { color: '#fff', fontSize: 9, fontWeight: '800' },
+  email: { color: colors.light.mutedForeground, fontSize: 13, marginTop: 1 },
+  role: { color: colors.light.mutedForeground, fontSize: 11 },
   editButton: {
     marginTop: spacing.md,
-    backgroundColor: colors.light.card,
+    padding: 10,
+    borderRadius: borderRadius.lg,
     borderWidth: 1,
     borderColor: colors.light.border,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.md,
     alignItems: 'center',
-    justifyContent: 'center',
   },
-  editButtonText: {
-    fontSize: typography.sm,
-    fontWeight: '600',
-    color: colors.light.foreground,
-  },
+  editButtonText: { fontWeight: '700', fontSize: 14 },
   statsGrid: {
     flexDirection: 'row',
     paddingHorizontal: spacing.lg,
-    gap: spacing.md,
-    marginBottom: spacing.lg,
+    gap: spacing.sm,
+    marginVertical: spacing.md,
   },
   statCard: {
     flex: 1,
-    backgroundColor: colors.light.card,
-    borderRadius: borderRadius.lg,
-    padding: spacing.md,
-    alignItems: 'center',
-    elevation: 1,
-  },
-  statValue: {
-    fontSize: typography.xl,
-    fontWeight: '700',
-    color: colors.light.foreground,
-    marginTop: spacing.sm,
-  },
-  statLabel: {
-    fontSize: typography.xs,
-    color: colors.light.mutedForeground,
-    marginTop: 2,
-  },
-  interestsSection: {
-    paddingHorizontal: spacing.lg,
-    marginBottom: spacing.lg,
-  },
-  sectionHeaderTitle: {
-    fontSize: typography.lg,
-    fontWeight: '600',
-    color: colors.light.foreground,
-    marginBottom: spacing.sm,
-  },
-  interestsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-  },
-  interestBadge: {
-    backgroundColor: colors.light.secondary,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.full,
-  },
-  interestText: {
-    fontSize: typography.sm,
-    color: colors.light.foreground,
-  },
-  creatorCard: {
-    marginHorizontal: spacing.lg,
-    marginBottom: spacing.lg,
-    padding: spacing.lg,
+    padding: spacing.sm,
     backgroundColor: colors.light.card,
     borderRadius: borderRadius.xl,
-    gap: spacing.lg,
+    alignItems: 'center',
     borderWidth: 1,
     borderColor: colors.light.border,
   },
-  creatorContent: {
-    flexDirection: 'row',
-    gap: spacing.md,
-    alignItems: 'center',
+  statValue: { fontSize: 16, fontWeight: '700', marginTop: 4 },
+  statLabel: { fontSize: 11, color: colors.light.mutedForeground },
+  interestsSection: { paddingHorizontal: spacing.lg, marginBottom: spacing.md },
+  sectionHeaderTitle: { fontSize: 16, fontWeight: '700', marginBottom: spacing.sm },
+  interestsContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  interestBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: colors.light.secondary,
+    borderRadius: 16,
   },
+  interestText: { fontSize: 13, fontWeight: '500' },
+  creatorCard: {
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.md,
+    padding: spacing.md,
+    backgroundColor: colors.light.card,
+    borderRadius: borderRadius.xl,
+    borderWidth: 1,
+    borderColor: colors.light.border,
+  },
+  creatorContent: { flexDirection: 'row', gap: 10, marginBottom: 12 },
   creatorIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: borderRadius.lg,
+    width: 32,
+    height: 32,
+    borderRadius: 8,
     backgroundColor: `${colors.light.primary}15`,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  creatorText: { flex: 1 },
-  creatorTitle: {
-    fontSize: typography.sm,
-    fontWeight: '600',
-    color: colors.light.foreground,
-  },
-  creatorDescription: {
-    fontSize: typography.xs,
-    color: colors.light.mutedForeground,
-    marginTop: 2,
-  },
+  creatorTitle: { fontSize: 13, fontWeight: '700' },
+  creatorDescription: { fontSize: 11, color: colors.light.mutedForeground, marginTop: 1 },
   creatorButton: {
+    backgroundColor: colors.light.foreground,
+    padding: 12,
+    borderRadius: borderRadius.lg,
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.light.primary,
-    paddingVertical: spacing.md,
-    borderRadius: borderRadius.lg,
     alignItems: 'center',
+    gap: 6,
   },
-  creatorButtonText: {
-    fontSize: typography.sm,
-    fontWeight: '600',
-    color: colors.light.primaryForeground,
-  },
+  creatorButtonText: { color: colors.light.background, fontWeight: '700', fontSize: 14 },
   sectionsContainer: {
     marginHorizontal: spacing.lg,
     backgroundColor: colors.light.card,
-    borderRadius: borderRadius.lg,
-    overflow: 'hidden',
+    borderRadius: borderRadius.xl,
     borderWidth: 1,
     borderColor: colors.light.border,
+    overflow: 'hidden',
   },
   sectionItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
+    padding: 12,
     borderBottomWidth: 1,
     borderBottomColor: colors.light.border,
   },
-  sectionIconContainer: {
-    width: 32,
-    alignItems: 'flex-start',
-  },
-  menuItemText: {
-    flex: 1,
-    fontSize: typography.sm,
-    color: colors.light.foreground,
-    fontWeight: '600',
-  },
+  sectionIconContainer: { width: 28 },
+  menuItemText: { flex: 1, fontWeight: '600', fontSize: 14 },
   tabsContainer: {
     flexDirection: 'row',
     paddingHorizontal: spacing.lg,
-    gap: spacing.xs,
-    marginTop: spacing.lg,
-    marginBottom: spacing.lg,
+    gap: 10,
+    marginVertical: spacing.md,
   },
-  tab: {
-    flex: 1,
-    paddingVertical: spacing.md,
-    alignItems: 'center',
-    borderRadius: borderRadius.md,
-  },
-  tabActive: {
-    backgroundColor: colors.light.secondary,
-  },
-  tabText: {
-    fontSize: typography.sm,
-    color: colors.light.mutedForeground,
-    fontWeight: '500',
-  },
-  tabTextActive: {
-    color: colors.light.foreground,
-    fontWeight: '600',
-  },
-  secretContainer: {
-    marginTop: spacing['2xl'],
-    alignItems: 'center',
-    opacity: 0.3,
-  },
-  secretText: {
-    fontSize: 10,
-    color: colors.light.mutedForeground,
-    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
-  },
-  bottomSpacer: { height: 40 },
+  tab: { flex: 1, padding: 10, borderRadius: borderRadius.lg, alignItems: 'center' },
+  tabActive: { backgroundColor: colors.light.secondary },
+  tabText: { fontWeight: '500', color: colors.light.mutedForeground, fontSize: 13 },
+  tabTextActive: { color: colors.light.foreground, fontWeight: '700' },
+  resetTrigger: { marginTop: 30, alignItems: 'center', opacity: 0.15 },
+  resetText: { fontSize: 9 },
 });

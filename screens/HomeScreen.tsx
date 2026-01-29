@@ -36,30 +36,23 @@ export default function HomeScreen() {
 
   // Динамический расчет секции "Для вас" на основе интересов пользователя
   const forYouEvents = useMemo(() => {
-    // Если у пользователя нет интересов, показываем общий список рекомендаций
     if (!user.interests || user.interests.length === 0) {
       const special = events.filter(e => e.isForYou);
       const regular = events.filter(e => !e.isForYou);
       return special.concat(regular).slice(0, 20);
     }
 
-    // Приводим интересы пользователя к нижнему регистру для сравнения
     const userInterestsLower = user.interests.map(i => i.toLowerCase());
 
-    // Фильтруем события: оставляем только те, где хотя бы одна категория совпадает с интересами
     const matched = events.filter(e => {
       if (!e.categories || e.categories.length === 0) return false;
       return e.categories.some(cat => userInterestsLower.includes(cat.toLowerCase()));
     });
 
-    // Если совпадений совсем нет (например, на выбранную категорию нет ивентов),
-    // тогда показываем общие рекомендации, чтобы секция не была пустой.
-    // Но если совпадения есть — показываем ТОЛЬКО их.
     if (matched.length === 0) {
       return events.filter(e => e.isForYou || e.stats > 500).slice(0, 10);
     }
 
-    // Сортируем: сначала те, что помечены как рекомендованные (isForYou), потом остальные подходящие
     return matched
       .sort((a, b) => {
         if (a.isForYou && !b.isForYou) return -1;
@@ -69,7 +62,6 @@ export default function HomeScreen() {
       .slice(0, 20);
   }, [events, user.interests]);
 
-  // Динамический расчет секции "На следующей неделе"
   const nextWeekEvents = useMemo(() => {
     const now = new Date();
     const currentDay = now.getDay();
@@ -88,7 +80,6 @@ export default function HomeScreen() {
     return strict.concat(future).slice(0, 20);
   }, [events]);
 
-  // Динамический расчет популярных мероприятий
   const popularEvents = useMemo(() => {
     return [...events]
       .sort((a, b) => (b.stats || 0) - (a.stats || 0))
@@ -159,6 +150,7 @@ export default function HomeScreen() {
           title="На следующей неделе"
           events={nextWeekEvents}
           onEventPress={e => navigation.navigate('EventDetail', { ...e })}
+          cardStyle={styles.horizontalCard}
         />
 
         <EventsGrid
@@ -240,8 +232,9 @@ const styles = StyleSheet.create({
   screenWrapper: { flex: 1 },
   container: { flex: 1, backgroundColor: colors.light.background },
   heroTitleContainer: {
-    paddingTop: spacing['2xl'],
+    paddingTop: spacing.xl,
     paddingBottom: spacing.lg,
+    paddingHorizontal: spacing.lg,
     alignItems: 'center',
     backgroundColor: colors.light.background,
   },
@@ -253,7 +246,7 @@ const styles = StyleSheet.create({
     lineHeight: 38,
   },
   gridCard: { width: 280, marginRight: spacing.md, marginBottom: spacing.md },
-  horizontalCard: { marginRight: spacing.md },
+  horizontalCard: { width: 280, marginRight: spacing.md },
   discussionsSection: { paddingHorizontal: spacing.lg, marginTop: spacing.xl },
   sectionHeader: {
     flexDirection: 'row',
@@ -268,7 +261,7 @@ const styles = StyleSheet.create({
   sectionSubtitle: {
     fontSize: typography.xs,
     color: colors.light.mutedForeground,
-    marginBottom: spacing.sm,
+    marginBottom: spacing.md,
     marginTop: 4,
   },
   liveBadge: {
@@ -291,7 +284,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.light.card,
     borderRadius: borderRadius.lg,
     padding: spacing.md,
-    marginBottom: spacing.sm,
+    marginBottom: spacing.md,
     borderWidth: 1,
     borderColor: colors.light.border,
   },

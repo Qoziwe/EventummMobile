@@ -51,7 +51,16 @@ export default function ThisWeekFeed({
       onPress={() => onEventPress?.(item)}
     >
       <View style={styles.card}>
-        <Image source={item.image} style={styles.cardImage} />
+        <Image
+          source={
+            !item.image || item.image === ''
+              ? { uri: 'https://via.placeholder.com/800x450?text=Event' }
+              : typeof item.image === 'string'
+                ? { uri: item.image }
+                : item.image
+          }
+          style={styles.cardImage}
+        />
         <View style={styles.badgesContainer}>
           {item.isPromoted && (
             <View style={styles.promotedBadge}>

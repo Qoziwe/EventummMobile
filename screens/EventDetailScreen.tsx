@@ -36,11 +36,9 @@ export default function EventDetailScreen() {
   const [showPayment, setShowPayment] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Анимации
   const modalAnim = useRef(new Animated.Value(0)).current;
   const scrollY = useRef(new Animated.Value(0)).current;
 
-  // Данные карты
   const [cardNumber, setCardNumber] = useState('');
   const [expiry, setExpiry] = useState('');
   const [cvv, setCvv] = useState('');
@@ -65,7 +63,6 @@ export default function EventDetailScreen() {
   };
 
   const isOrganizer = user.userType === 'organizer';
-  // Является ли текущий пользователь автором этого мероприятия
   const isMine = user.id === event.organizerId;
 
   useLayoutEffect(() => {
@@ -141,11 +138,12 @@ export default function EventDetailScreen() {
     }, 2000);
   };
 
-  const imageSource = imageError
-    ? { uri: PLACEHOLDER_IMAGE }
-    : typeof event.image === 'string'
-      ? { uri: event.image }
-      : event.image || { uri: PLACEHOLDER_IMAGE };
+  const imageSource =
+    imageError || !event.image || event.image === ''
+      ? { uri: PLACEHOLDER_IMAGE }
+      : typeof event.image === 'string'
+        ? { uri: event.image }
+        : event.image || { uri: PLACEHOLDER_IMAGE };
 
   const backdropOpacity = modalAnim.interpolate({
     inputRange: [0, 1],
@@ -232,10 +230,17 @@ export default function EventDetailScreen() {
 
           <TouchableOpacity
             style={styles.organizerCard}
-            onPress={() => navigation.navigate('OrganizerProfile', { id: event.id })}
+            onPress={() => {
+              // ИСПРАВЛЕННЫЙ ПУТЬ: Теперь переход идет напрямую на глобальный экран OrganizerProfile
+              navigation.navigate('OrganizerProfile', {
+                organizerId: event.organizerId,
+                organizerName: event.organizerName,
+                organizerAvatar: event.organizerAvatar,
+              });
+            }}
           >
             <Image
-              source={{ uri: event.organizerAvatar }}
+              source={{ uri: event.organizerAvatar || 'https://via.placeholder.com/100' }}
               style={styles.organizerAvatar}
             />
             <View style={styles.organizerInfo}>

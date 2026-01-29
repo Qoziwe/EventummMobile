@@ -11,24 +11,13 @@ export interface EventItem {
   price: string;
   image: any;
   categories: string[];
-  vibe: string;
-  district: string;
-  ageLimit: number;
-  timestamp: number;
-  priceValue: number;
-  addedAt: string;
-  tags?: string[];
   stats?: number;
-  isForYou?: boolean;
-  isNextWeek?: boolean;
 }
 
 interface EventCardProps extends EventItem {
   onPress?: () => void;
   style?: ViewStyle;
 }
-
-const PLACEHOLDER_IMAGE = 'https://via.placeholder.com/800x450?text=Event+Image';
 
 export default function EventCard({
   title,
@@ -42,9 +31,11 @@ export default function EventCard({
   categories,
 }: EventCardProps) {
   const [imageError, setImageError] = useState(false);
-  const source = imageError 
-    ? { uri: PLACEHOLDER_IMAGE } 
-    : (typeof image === 'string' ? { uri: image } : image);
+  const source = imageError || !image || image === ''
+    ? { uri: 'https://via.placeholder.com/800x450?text=Event' }
+    : typeof image === 'string'
+      ? { uri: image }
+      : image;
 
   return (
     <TouchableOpacity
@@ -53,16 +44,14 @@ export default function EventCard({
       activeOpacity={0.9}
     >
       <View style={styles.imageContainer}>
-        <Image 
-          source={source} 
-          style={styles.image} 
-          resizeMode="cover" 
+        <Image
+          source={source}
+          style={styles.image}
+          resizeMode="cover"
           onError={() => setImageError(true)}
         />
         <View style={styles.categoryBadge}>
-          <Text style={styles.categoryText}>
-            {categories ? categories[0] : 'Событие'}
-          </Text>
+          <Text style={styles.categoryText}>{categories ? categories[0] : 'Event'}</Text>
         </View>
       </View>
 
@@ -70,9 +59,8 @@ export default function EventCard({
         <Text style={styles.title} numberOfLines={2}>
           {title}
         </Text>
-
-        <View style={styles.infoContainer}>
-          <View style={styles.infoRow}>
+        <View style={styles.info}>
+          <View style={styles.row}>
             <Ionicons
               name="calendar-outline"
               size={14}
@@ -80,7 +68,7 @@ export default function EventCard({
             />
             <Text style={styles.infoText}>{date}</Text>
           </View>
-          <View style={styles.infoRow}>
+          <View style={styles.row}>
             <Ionicons
               name="location-outline"
               size={14}
@@ -90,27 +78,14 @@ export default function EventCard({
               {location}
             </Text>
           </View>
-          {stats !== undefined && (
-            <View style={styles.infoRow}>
-              <Ionicons
-                name="people-outline"
-                size={14}
-                color={colors.light.mutedForeground}
-              />
-              <Text style={styles.infoText}>{stats} просмотров</Text>
-            </View>
-          )}
         </View>
-
         <View style={styles.footer}>
           <View style={styles.priceTag}>
-            <Ionicons
-              name="ticket-outline"
-              size={14}
-              color={colors.light.primaryForeground}
-            />
             <Text style={styles.priceText}>{price}</Text>
           </View>
+          {stats !== undefined && (
+            <Text style={styles.statsText}>{stats} просмотров</Text>
+          )}
         </View>
       </View>
     </TouchableOpacity>
@@ -119,59 +94,41 @@ export default function EventCard({
 
 const styles = StyleSheet.create({
   container: {
-    width: 280,
     backgroundColor: colors.light.card,
     borderRadius: borderRadius.xl,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: colors.light.border,
-    marginBottom: spacing.sm,
   },
-  imageContainer: {
-    height: 160,
-    backgroundColor: colors.light.muted,
-  },
+  imageContainer: { height: 180 },
   image: { width: '100%', height: '100%' },
   categoryBadge: {
     position: 'absolute',
-    top: spacing.sm,
-    right: spacing.sm,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    paddingHorizontal: spacing.sm,
+    top: 12,
+    right: 12,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: borderRadius.md,
+    borderRadius: 6,
   },
   categoryText: {
-    fontSize: typography.xs,
-    fontWeight: '700',
+    fontSize: 10,
+    fontWeight: '800',
     color: colors.light.primary,
     textTransform: 'uppercase',
   },
-  content: { padding: spacing.md, gap: spacing.sm },
-  title: {
-    fontSize: typography.base,
-    fontWeight: '700',
-    color: colors.light.foreground,
-    lineHeight: 22,
-    height: 44,
-  },
-  infoContainer: { gap: 4 },
-  infoRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  infoText: { fontSize: typography.sm, color: colors.light.mutedForeground },
-  footer: { marginTop: spacing.xs },
+  content: { padding: spacing.md },
+  title: { fontSize: 16, fontWeight: '700', height: 44, marginBottom: 8 },
+  info: { gap: 4, marginBottom: 12 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  infoText: { fontSize: 13, color: colors.light.mutedForeground },
+  footer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   priceTag: {
-    alignSelf: 'flex-start',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: colors.light.primary,
-    paddingVertical: 6,
+    backgroundColor: colors.light.foreground,
     paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: borderRadius.lg,
   },
-  priceText: {
-    fontSize: typography.sm,
-    fontWeight: '600',
-    color: colors.light.primaryForeground,
-  },
+  priceText: { color: colors.light.background, fontWeight: '700', fontSize: 12 },
+  statsText: { fontSize: 11, color: colors.light.mutedForeground },
 });

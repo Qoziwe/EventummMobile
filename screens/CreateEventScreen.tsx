@@ -79,22 +79,19 @@ export default function CreateEventScreen() {
   const { user } = useUserStore();
   const { showToast } = useToast();
 
-  const editEvent = route.params?.event; // Данные для редактирования
+  const editEvent = route.params?.event;
 
   const [step, setStep] = useState(1);
 
-  // Form State
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [location, setLocation] = useState('');
   const [district, setDistrict] = useState(DISTRICTS[0]);
 
-  // Date State
   const [selDay, setSelDay] = useState('1');
   const [selMonth, setSelMonth] = useState('0');
   const [selYear, setSelYear] = useState('2025');
 
-  // Time State
   const [startH, setStartH] = useState('19');
   const [startM, setStartM] = useState('00');
   const [endH, setEndH] = useState('21');
@@ -106,16 +103,13 @@ export default function CreateEventScreen() {
   const [ageLimit, setAgeLimit] = useState('18');
   const [imageUrl, setImageUrl] = useState('');
 
-  // Modals
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
 
-  // Инициализация при редактировании
   useEffect(() => {
     if (editEvent) {
       setTitle(editEvent.title);
       setDescription(editEvent.fullDescription);
-      // Убираем район из строки локации для отображения в инпуте
       const cleanLocation = editEvent.location.split(', ')[0];
       setLocation(cleanLocation);
       setDistrict(editEvent.district);
@@ -125,7 +119,6 @@ export default function CreateEventScreen() {
       setAgeLimit(editEvent.ageLimit.toString());
       setImageUrl(editEvent.image);
 
-      // Парсинг даты (упрощенно)
       const dateObj = new Date(editEvent.timestamp);
       if (!isNaN(dateObj.getTime())) {
         setSelDay(dateObj.getDate().toString());
@@ -156,7 +149,6 @@ export default function CreateEventScreen() {
 
   const handleFinish = () => {
     const finalImage = imageUrl.trim().length > 10 ? imageUrl : NO_IMAGE_URL;
-
     const monthLabel = MONTHS.find(m => m.value === selMonth)?.label;
     const dateString = `${selDay} ${monthLabel}, ${selYear}`;
     const timeRangeString = `${startH}:${startM} — ${endH}:${endM}`;
@@ -194,7 +186,6 @@ export default function CreateEventScreen() {
     if (editEvent) {
       updateEvent(eventData);
       showToast({ message: 'Мероприятие обновлено', type: 'success' });
-      // Возвращаемся в детали
       navigation.navigate('EventDetail', { ...eventData });
     } else {
       addEvent(eventData);
@@ -227,22 +218,22 @@ export default function CreateEventScreen() {
       <StatusBar barStyle="dark-content" backgroundColor={colors.light.background} />
 
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={handleBack}>
+        <TouchableOpacity style={styles.headerBtn} onPress={handleBack}>
           <Ionicons name="arrow-back" size={24} color={colors.light.foreground} />
         </TouchableOpacity>
-        <View style={styles.progressWrapper}>
+        <View style={styles.headerContent}>
           <Text style={styles.headerTitle}>
-            {editEvent ? 'Редактирование' : 'Создание'}
+            {editEvent ? 'Редактирование' : 'Новое событие'}
           </Text>
           <View style={styles.progressBar}>
             <View style={[styles.progressFill, { width: `${(step / 3) * 100}%` }]} />
           </View>
         </View>
-        <View style={{ width: 40 }} />
+        <View style={styles.headerBtn} />
       </View>
 
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={{ flex: 1 }}
       >
         <ScrollView
@@ -253,27 +244,27 @@ export default function CreateEventScreen() {
           <Text style={styles.stepIndicator}>Шаг {step} из 3</Text>
 
           {step === 1 && (
-            <View style={styles.stepContainer}>
-              <Text style={styles.label}>Название</Text>
+            <View style={styles.formSection}>
+              <Text style={styles.label}>Название события</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Название мероприятия"
+                placeholder="Как называется ваше мероприятие?"
                 value={title}
                 onChangeText={setTitle}
               />
               <Text style={styles.label}>Описание</Text>
               <TextInput
                 style={[styles.input, styles.textArea]}
-                placeholder="Расскажите о событии..."
+                placeholder="Подробно опишите, что ждет гостей..."
                 multiline
                 value={description}
                 onChangeText={setDescription}
                 textAlignVertical="top"
               />
-              <Text style={styles.label}>URL Изображения</Text>
+              <Text style={styles.label}>Ссылка на обложку</Text>
               <TextInput
                 style={styles.input}
-                placeholder="https://..."
+                placeholder="URL изображения (https://...)"
                 value={imageUrl}
                 onChangeText={setImageUrl}
               />
@@ -281,16 +272,16 @@ export default function CreateEventScreen() {
           )}
 
           {step === 2 && (
-            <View style={styles.stepContainer}>
-              <Text style={styles.label}>Адрес</Text>
+            <View style={styles.formSection}>
+              <Text style={styles.label}>Где пройдет?</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Улица, дом"
+                placeholder="Улица, дом, название места"
                 value={location}
                 onChangeText={setLocation}
               />
 
-              <Text style={styles.label}>Район</Text>
+              <Text style={styles.label}>Выберите район</Text>
               <View style={styles.chipGrid}>
                 {DISTRICTS.map(d => (
                   <TouchableOpacity
@@ -307,28 +298,28 @@ export default function CreateEventScreen() {
                 ))}
               </View>
 
-              <Text style={styles.label}>Дата</Text>
+              <Text style={styles.label}>Когда?</Text>
               <TouchableOpacity
-                style={styles.selectorButton}
+                style={styles.selector}
                 onPress={() => setShowDatePicker(true)}
               >
                 <Ionicons
                   name="calendar-outline"
-                  size={20}
+                  size={18}
                   color={colors.light.primary}
                 />
-                <Text style={styles.selectorButtonText}>
+                <Text style={styles.selectorText}>
                   {selDay} {MONTHS.find(m => m.value === selMonth)?.label} {selYear}
                 </Text>
               </TouchableOpacity>
 
-              <Text style={styles.label}>Время проведения</Text>
+              <Text style={styles.label}>Время начала и конца</Text>
               <TouchableOpacity
-                style={styles.selectorButton}
+                style={styles.selector}
                 onPress={() => setShowTimePicker(true)}
               >
-                <Ionicons name="time-outline" size={20} color={colors.light.primary} />
-                <Text style={styles.selectorButtonText}>
+                <Ionicons name="time-outline" size={18} color={colors.light.primary} />
+                <Text style={styles.selectorText}>
                   С {startH}:{startM} до {endH}:{endM}
                 </Text>
               </TouchableOpacity>
@@ -336,14 +327,14 @@ export default function CreateEventScreen() {
           )}
 
           {step === 3 && (
-            <View style={styles.stepContainer}>
+            <View style={styles.formSection}>
               <Text style={styles.label}>Категория</Text>
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
                 style={styles.catScroll}
               >
-                <View style={styles.chipGrid}>
+                <View style={styles.chipGridHorizontal}>
                   {ALL_INTERESTS.map(cat => (
                     <TouchableOpacity
                       key={cat}
@@ -363,17 +354,17 @@ export default function CreateEventScreen() {
                 </View>
               </ScrollView>
 
-              <Text style={styles.label}>Вайб</Text>
-              <View style={styles.iconGrid}>
+              <Text style={styles.label}>Вайб (атмосфера)</Text>
+              <View style={styles.vibeGrid}>
                 {VIBES.map(v => (
                   <TouchableOpacity
                     key={v.id}
-                    style={[styles.iconCard, vibe === v.id && styles.iconCardActive]}
+                    style={[styles.vibeCard, vibe === v.id && styles.vibeCardActive]}
                     onPress={() => setVibe(v.id)}
                   >
                     <Ionicons
                       name={v.icon as any}
-                      size={24}
+                      size={20}
                       color={
                         vibe === v.id
                           ? colors.light.primary
@@ -381,7 +372,7 @@ export default function CreateEventScreen() {
                       }
                     />
                     <Text
-                      style={[styles.iconLabel, vibe === v.id && styles.iconLabelActive]}
+                      style={[styles.vibeLabel, vibe === v.id && styles.vibeLabelActive]}
                     >
                       {v.label}
                     </Text>
@@ -389,12 +380,12 @@ export default function CreateEventScreen() {
                 ))}
               </View>
 
-              <View style={styles.row}>
+              <View style={styles.inputRow}>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.label}>Цена (₸)</Text>
                   <TextInput
                     style={styles.input}
-                    placeholder="0 (бесплатно)"
+                    placeholder="0"
                     keyboardType="numeric"
                     value={price}
                     onChangeText={setPrice}
@@ -414,21 +405,17 @@ export default function CreateEventScreen() {
             </View>
           )}
 
-          <View style={styles.footer}>
+          <View style={styles.footerActions}>
             <TouchableOpacity
-              style={[styles.mainButton, step === 3 && styles.createButton]}
+              style={[styles.btnMain, step === 3 && styles.btnFinish]}
               onPress={step === 3 ? handleFinish : handleNext}
             >
-              <Text style={styles.mainButtonText}>
-                {step === 3
-                  ? editEvent
-                    ? 'Сохранить изменения'
-                    : 'Опубликовать'
-                  : 'Далее'}
+              <Text style={styles.btnMainText}>
+                {step === 3 ? (editEvent ? 'Сохранить' : 'Опубликовать') : 'Продолжить'}
               </Text>
               <Ionicons
                 name={step === 3 ? (editEvent ? 'save' : 'rocket') : 'chevron-forward'}
-                size={20}
+                size={18}
                 color="#fff"
               />
             </TouchableOpacity>
@@ -436,18 +423,19 @@ export default function CreateEventScreen() {
         </ScrollView>
       </KeyboardAvoidingView>
 
+      {/* Date Picker Modal */}
       <Modal
         visible={showDatePicker}
         transparent
-        animationType="slide"
+        animationType="fade"
         onRequestClose={() => setShowDatePicker(false)}
       >
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalContent}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalBox}>
             <Text style={styles.modalTitle}>Выберите дату</Text>
-            <View style={styles.pickerContainer}>
+            <View style={styles.pickerWrap}>
               <View style={styles.pickerCol}>
-                <Text style={styles.colLabel}>День</Text>
+                <Text style={styles.colName}>День</Text>
                 <FlatList
                   data={DAYS}
                   renderItem={({ item }) => renderPickerItem(item, selDay, setSelDay)}
@@ -455,7 +443,7 @@ export default function CreateEventScreen() {
                 />
               </View>
               <View style={styles.pickerCol}>
-                <Text style={styles.colLabel}>Месяц</Text>
+                <Text style={styles.colName}>Месяц</Text>
                 <FlatList
                   data={MONTHS}
                   renderItem={({ item }) => renderPickerItem(item, selMonth, setSelMonth)}
@@ -463,7 +451,7 @@ export default function CreateEventScreen() {
                 />
               </View>
               <View style={styles.pickerCol}>
-                <Text style={styles.colLabel}>Год</Text>
+                <Text style={styles.colName}>Год</Text>
                 <FlatList
                   data={YEARS}
                   renderItem={({ item }) => renderPickerItem(item, selYear, setSelYear)}
@@ -472,27 +460,28 @@ export default function CreateEventScreen() {
               </View>
             </View>
             <TouchableOpacity
-              style={styles.modalCloseBtn}
+              style={styles.btnModal}
               onPress={() => setShowDatePicker(false)}
             >
-              <Text style={styles.modalCloseBtnText}>Применить</Text>
+              <Text style={styles.btnModalText}>Применить</Text>
             </TouchableOpacity>
           </View>
         </View>
       </Modal>
 
+      {/* Time Picker Modal */}
       <Modal
         visible={showTimePicker}
         transparent
-        animationType="slide"
+        animationType="fade"
         onRequestClose={() => setShowTimePicker(false)}
       >
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Время (Начало — Конец)</Text>
-            <View style={styles.pickerContainer}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalBox}>
+            <Text style={styles.modalTitle}>Время события</Text>
+            <View style={styles.pickerWrap}>
               <View style={styles.pickerCol}>
-                <Text style={styles.colLabel}>Час нач.</Text>
+                <Text style={styles.colName}>Час нач.</Text>
                 <FlatList
                   data={HOURS}
                   renderItem={({ item }) => renderPickerItem(item, startH, setStartH)}
@@ -500,16 +489,16 @@ export default function CreateEventScreen() {
                 />
               </View>
               <View style={styles.pickerCol}>
-                <Text style={styles.colLabel}>Мин нач.</Text>
+                <Text style={styles.colName}>Мин нач.</Text>
                 <FlatList
                   data={MINUTES}
                   renderItem={({ item }) => renderPickerItem(item, startM, setStartM)}
                   keyExtractor={i => i}
                 />
               </View>
-              <View style={{ width: 20 }} />
+              <View style={{ width: 15 }} />
               <View style={styles.pickerCol}>
-                <Text style={styles.colLabel}>Час кон.</Text>
+                <Text style={styles.colName}>Час кон.</Text>
                 <FlatList
                   data={HOURS}
                   renderItem={({ item }) => renderPickerItem(item, endH, setEndH)}
@@ -517,7 +506,7 @@ export default function CreateEventScreen() {
                 />
               </View>
               <View style={styles.pickerCol}>
-                <Text style={styles.colLabel}>Мин кон.</Text>
+                <Text style={styles.colName}>Мин кон.</Text>
                 <FlatList
                   data={MINUTES}
                   renderItem={({ item }) => renderPickerItem(item, endM, setEndM)}
@@ -526,10 +515,10 @@ export default function CreateEventScreen() {
               </View>
             </View>
             <TouchableOpacity
-              style={styles.modalCloseBtn}
+              style={styles.btnModal}
               onPress={() => setShowTimePicker(false)}
             >
-              <Text style={styles.modalCloseBtnText}>Применить</Text>
+              <Text style={styles.btnModalText}>Применить</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -541,64 +530,69 @@ export default function CreateEventScreen() {
 const styles = StyleSheet.create({
   fullContainer: { flex: 1, backgroundColor: colors.light.background },
   header: {
-    height: 64,
+    height: 56,
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: spacing.lg,
     borderBottomWidth: 1,
     borderBottomColor: colors.light.border,
   },
-  backBtn: { width: 40, height: 40, justifyContent: 'center' },
-  progressWrapper: { flex: 1, alignItems: 'center' },
-  headerTitle: { fontSize: 16, fontWeight: '700', color: colors.light.foreground },
+  headerBtn: { width: 40, height: 40, justifyContent: 'center' },
+  headerContent: { flex: 1, alignItems: 'center' },
+  headerTitle: {
+    fontSize: typography.base,
+    fontWeight: '700',
+    color: colors.light.foreground,
+  },
   progressBar: {
-    width: 100,
-    height: 4,
-    backgroundColor: colors.light.border,
+    width: 80,
+    height: 3,
+    backgroundColor: colors.light.secondary,
     borderRadius: 2,
     marginTop: 4,
     overflow: 'hidden',
   },
   progressFill: { height: '100%', backgroundColor: colors.light.primary },
   container: { flex: 1 },
-  scrollContent: { padding: spacing.lg, paddingBottom: 100 },
+  scrollContent: { padding: spacing.lg, paddingBottom: 60 },
   stepIndicator: {
     fontSize: 10,
     fontWeight: '800',
     color: colors.light.primary,
     textTransform: 'uppercase',
-    marginBottom: spacing.lg,
+    marginBottom: 12,
   },
-  stepContainer: { gap: spacing.md },
+  formSection: { gap: 14 },
   label: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700',
     color: colors.light.foreground,
-    marginBottom: 4,
+    marginBottom: 2,
   },
   input: {
     backgroundColor: colors.light.card,
     borderWidth: 1,
     borderColor: colors.light.border,
     borderRadius: borderRadius.lg,
-    padding: spacing.md,
-    fontSize: 16,
+    padding: 12,
+    fontSize: 14,
     color: colors.light.foreground,
   },
-  textArea: { height: 120 },
-  selectorButton: {
+  textArea: { height: 100 },
+  selector: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.light.card,
     borderWidth: 1,
     borderColor: colors.light.border,
     borderRadius: borderRadius.lg,
-    padding: spacing.md,
-    gap: 12,
+    padding: 12,
+    gap: 10,
   },
-  selectorButtonText: { fontSize: 16, color: colors.light.foreground, fontWeight: '500' },
-  chipGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  selectorText: { fontSize: 14, color: colors.light.foreground, fontWeight: '500' },
+  chipGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   catScroll: { marginHorizontal: -spacing.lg, paddingHorizontal: spacing.lg },
+  chipGridHorizontal: { flexDirection: 'row', gap: 6 },
   chip: {
     paddingHorizontal: 12,
     paddingVertical: 8,
@@ -611,87 +605,87 @@ const styles = StyleSheet.create({
     backgroundColor: colors.light.primary,
     borderColor: colors.light.primary,
   },
-  chipText: { fontSize: 12, color: colors.light.foreground, fontWeight: '600' },
+  chipText: { fontSize: 11, color: colors.light.foreground, fontWeight: '600' },
   chipTextActive: { color: '#fff' },
-  iconGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  iconCard: {
+  vibeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  vibeCard: {
     width: '31%',
     backgroundColor: colors.light.card,
     borderWidth: 1,
     borderColor: colors.light.border,
     borderRadius: borderRadius.lg,
-    padding: spacing.md,
+    padding: 10,
     alignItems: 'center',
-    gap: 6,
+    gap: 4,
   },
-  iconCardActive: {
+  vibeCardActive: {
     borderColor: colors.light.primary,
     backgroundColor: `${colors.light.primary}08`,
   },
-  iconLabel: {
+  vibeLabel: {
     fontSize: 10,
     fontWeight: '700',
     color: colors.light.mutedForeground,
     textAlign: 'center',
   },
-  iconLabelActive: { color: colors.light.primary },
-  row: { flexDirection: 'row', gap: 10 },
-  footer: { marginTop: 40 },
-  mainButton: {
+  vibeLabelActive: { color: colors.light.primary },
+  inputRow: { flexDirection: 'row', gap: 10 },
+  footerActions: { marginTop: 32 },
+  btnMain: {
     backgroundColor: colors.light.foreground,
-    padding: spacing.lg,
-    borderRadius: borderRadius.xl,
+    padding: 14,
+    borderRadius: borderRadius.lg,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 10,
+    gap: 8,
   },
-  createButton: { backgroundColor: colors.light.primary },
-  mainButtonText: { color: '#fff', fontSize: 16, fontWeight: '800' },
-  modalBackdrop: {
+  btnFinish: { backgroundColor: colors.light.primary },
+  btnMainText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    padding: 20,
   },
-  modalContent: {
+  modalBox: {
     backgroundColor: colors.light.background,
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
-    padding: 24,
-    height: 450,
+    borderRadius: borderRadius.xl,
+    padding: 20,
+    maxHeight: 420,
   },
   modalTitle: {
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: '800',
     color: colors.light.foreground,
-    marginBottom: 20,
+    marginBottom: 16,
     textAlign: 'center',
   },
-  pickerContainer: { flexDirection: 'row', flex: 1 },
+  pickerWrap: { flexDirection: 'row', height: 250 },
   pickerCol: { flex: 1 },
-  colLabel: {
+  colName: {
     textAlign: 'center',
-    fontSize: 10,
+    fontSize: 9,
     color: colors.light.mutedForeground,
-    marginBottom: 8,
+    marginBottom: 6,
     fontWeight: '700',
     textTransform: 'uppercase',
   },
   pickerOpt: {
-    paddingVertical: 12,
+    paddingVertical: 10,
     alignItems: 'center',
-    borderRadius: 12,
-    marginHorizontal: 4,
+    borderRadius: 8,
+    marginHorizontal: 2,
   },
   pickerOptActive: { backgroundColor: colors.light.primary },
-  pickerOptText: { fontSize: 16, color: colors.light.foreground },
+  pickerOptText: { fontSize: 14, color: colors.light.foreground },
   pickerOptTextActive: { color: '#fff', fontWeight: '700' },
-  modalCloseBtn: {
+  btnModal: {
     backgroundColor: colors.light.primary,
-    padding: 16,
-    borderRadius: 16,
+    padding: 14,
+    borderRadius: borderRadius.lg,
     alignItems: 'center',
-    marginTop: 10,
+    marginTop: 12,
   },
-  modalCloseBtnText: { color: '#fff', fontWeight: '800', fontSize: 16 },
+  btnModalText: { color: '#fff', fontWeight: '700', fontSize: 14 },
 });

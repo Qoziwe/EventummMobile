@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import { colors, spacing, borderRadius, typography } from '../theme/colors';
 import { useUserStore } from '../store/userStore';
 
@@ -48,6 +49,7 @@ export default function Header({
   title,
   onProfilePress,
 }: HeaderProps) {
+  const navigation = useNavigation<any>();
   const { user } = useUserStore();
   const [selectedCity, setSelectedCity] = useState('Алматы');
   const [showCityDropdown, setShowCityDropdown] = useState(false);
@@ -56,6 +58,15 @@ export default function Header({
   const handleCitySelect = (city: string) => {
     setSelectedCity(city);
     setShowCityDropdown(false);
+  };
+
+  const handleAvatarPress = () => {
+    if (onProfilePress) {
+      onProfilePress();
+    } else {
+      // Переход на таб профиля
+      navigation.navigate('Profile');
+    }
   };
 
   const renderCityItem = ({ item }: { item: { id: string; name: string } }) => (
@@ -136,7 +147,7 @@ export default function Header({
               />
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.avatarButton} onPress={onProfilePress}>
+            <TouchableOpacity style={styles.avatarButton} onPress={handleAvatarPress}>
               <View style={styles.avatar}>
                 <Text style={styles.avatarText}>{user.avatarInitials}</Text>
               </View>

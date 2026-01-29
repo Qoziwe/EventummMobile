@@ -17,11 +17,11 @@ import CommunityCard from '../components/CommunityComponents/CommunityCard';
 import { COMMUNITIES, MOCK_POSTS } from '../data/communitiesMockData';
 
 const defaultCategories = [
-  { id: 'all', label: 'Все' },
-  { id: 'music', label: 'Музыка' },
-  { id: 'tech', label: 'Технологии' },
-  { id: 'sport', label: 'Спорт' },
-  { id: 'food', label: 'Еда' },
+  { id: 'all', label: 'Все', icon: 'apps-outline' },
+  { id: 'music', label: 'Музыка', icon: 'musical-notes-outline' },
+  { id: 'tech', label: 'Технологии', icon: 'hardware-chip-outline' },
+  { id: 'sport', label: 'Спорт', icon: 'fitness-outline' },
+  { id: 'food', label: 'Еда', icon: 'restaurant-outline' },
 ];
 
 export default function CommunitiesScreen() {
@@ -38,13 +38,6 @@ export default function CommunitiesScreen() {
     });
   }, [searchValue, selectedCategory]);
 
-  function openCommunityPosts(communityId: string) {
-    const post = MOCK_POSTS.find(p => p.communityId === communityId);
-    if (post) {
-      navigation.navigate('PostThread' as never, { postId: post.id } as never);
-    }
-  }
-
   return (
     <SafeAreaView style={styles.fullContainer} edges={['top']}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.light.background} />
@@ -60,15 +53,17 @@ export default function CommunitiesScreen() {
       </View>
 
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-        <View style={styles.searchContainer}>
-          <Ionicons name="search" size={18} color={colors.light.mutedForeground} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Поиск сообществ..."
-            placeholderTextColor={colors.light.mutedForeground}
-            value={searchValue}
-            onChangeText={setSearchValue}
-          />
+        <View style={styles.searchWrapper}>
+          <View style={styles.searchContainer}>
+            <Ionicons name="search" size={20} color={colors.light.mutedForeground} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Поиск сообществ..."
+              placeholderTextColor={colors.light.mutedForeground}
+              value={searchValue}
+              onChangeText={setSearchValue}
+            />
+          </View>
         </View>
 
         <ScrollView
@@ -84,6 +79,11 @@ export default function CommunitiesScreen() {
                 style={[styles.categoryChip, isActive && styles.categoryChipActive]}
                 onPress={() => setSelectedCategory(category.id)}
               >
+                <Ionicons
+                  name={category.icon as any}
+                  size={16}
+                  color={isActive ? colors.light.primary : colors.light.foreground}
+                />
                 <Text
                   style={[styles.categoryLabel, isActive && styles.categoryLabelActive]}
                 >
@@ -99,7 +99,14 @@ export default function CommunitiesScreen() {
             <CommunityCard
               key={community.id}
               {...community}
-              onPress={() => openCommunityPosts(community.id)}
+              onPress={() => {
+                const post = MOCK_POSTS.find(p => p.communityId === community.id);
+                if (post)
+                  navigation.navigate(
+                    'PostThread' as never,
+                    { postId: post.id } as never
+                  );
+              }}
             />
           ))}
         </View>
@@ -130,43 +137,44 @@ const styles = StyleSheet.create({
     fontSize: typography.xl,
     fontWeight: '700',
     color: colors.light.foreground,
-    includeFontPadding: false,
-    textAlignVertical: 'center',
   },
   container: { flex: 1 },
+  searchWrapper: { paddingHorizontal: spacing.lg, paddingTop: spacing.lg }, // Унифицирован отступ
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    margin: spacing.lg,
-    paddingHorizontal: spacing.md,
-    height: 44,
     backgroundColor: colors.light.secondary,
     borderRadius: borderRadius.lg,
+    paddingHorizontal: spacing.md,
+    height: 48,
     gap: spacing.sm,
   },
   searchInput: { flex: 1, fontSize: typography.base, color: colors.light.foreground },
   categoriesContainer: {
     paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
     gap: spacing.sm,
-    paddingBottom: spacing.md,
   },
   categoryChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingVertical: 8,
     borderRadius: borderRadius.lg,
     borderWidth: 1,
     borderColor: colors.light.border,
+    backgroundColor: colors.light.background,
   },
   categoryChipActive: {
-    backgroundColor: colors.light.primary,
     borderColor: colors.light.primary,
+    backgroundColor: colors.light.secondary,
   },
   categoryLabel: { fontSize: typography.sm, color: colors.light.foreground },
-  categoryLabelActive: { color: colors.light.primaryForeground },
+  categoryLabelActive: { color: colors.light.primary, fontWeight: '600' },
   communitiesGrid: {
     paddingHorizontal: spacing.lg,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
+    paddingBottom: 40,
+    gap: spacing.md, // Теперь карточки идут одна под другой
   },
 });

@@ -5,16 +5,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { colors, spacing, borderRadius } from '../theme/colors';
 
-export default function SettingsScreen() {
+export default function AnalyticsScreen() {
   const navigation = useNavigation();
-
-  const sections = [
-    { id: 'acc', title: 'Аккаунт', icon: 'person-outline' },
-    { id: 'notif', title: 'Уведомления', icon: 'notifications-outline' },
-    { id: 'priv', title: 'Приватность', icon: 'lock-closed-outline' },
-    { id: 'lang', title: 'Язык', icon: 'globe-outline' },
-    { id: 'help', title: 'Помощь', icon: 'help-circle-outline' },
-  ];
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -22,21 +14,22 @@ export default function SettingsScreen() {
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={24} color={colors.light.foreground} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Настройки</Text>
+        <Text style={styles.headerTitle}>Аналитика</Text>
         <View style={{ width: 24 }} />
       </View>
       <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
-        {sections.map(s => (
-          <TouchableOpacity key={s.id} style={styles.item}>
-            <Ionicons name={s.icon as any} size={20} color={colors.light.primary} />
-            <Text style={styles.itemText}>{s.title}</Text>
-            <Ionicons
-              name="chevron-forward"
-              size={16}
-              color={colors.light.mutedForeground}
-            />
-          </TouchableOpacity>
-        ))}
+        <View style={styles.card}>
+          <Text style={styles.val}>1,240</Text>
+          <Text style={styles.lbl}>Просмотров за неделю</Text>
+        </View>
+        <View style={styles.card}>
+          <Text style={styles.val}>45</Text>
+          <Text style={styles.lbl}>Продано билетов</Text>
+        </View>
+        <View style={styles.card}>
+          <Text style={[styles.val, { color: '#22C55E' }]}>+12%</Text>
+          <Text style={styles.lbl}>Рост аудитории</Text>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -53,16 +46,14 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.light.border,
   },
   headerTitle: { fontSize: 18, fontWeight: '700' },
-  item: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: spacing.md,
+  card: {
+    padding: 20,
     backgroundColor: colors.light.card,
-    borderRadius: borderRadius.lg,
-    marginBottom: spacing.sm,
+    borderRadius: borderRadius.xl,
     borderWidth: 1,
     borderColor: colors.light.border,
-    gap: 12,
+    marginBottom: 12,
   },
-  itemText: { flex: 1, fontWeight: '600' },
+  val: { fontSize: 24, fontWeight: '800' },
+  lbl: { color: colors.light.mutedForeground, fontSize: 12 },
 });

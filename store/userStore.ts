@@ -42,6 +42,8 @@ interface UserState {
   updateInterests: (interests: string[]) => void;
   updateProfile: (data: Partial<UserData>) => void;
   becomeOrganizer: () => void;
+  toggleFollow: (organizerId: string) => void;
+  isFollowing: (organizerId: string) => boolean;
   clearAllData: () => Promise<void>;
 }
 
@@ -54,16 +56,13 @@ export const useUserStore = create<UserState>()(
 
       register: async data => {
         await new Promise(resolve => setTimeout(resolve, 800));
-
         const { registeredUsers } = get();
 
         if (data.email) {
           const isEmailTaken = registeredUsers.some(
             u => u.email.toLowerCase() === data.email?.toLowerCase()
           );
-          if (isEmailTaken) {
-            throw new Error('Пользователь с такой почтой уже существует');
-          }
+          if (isEmailTaken) throw new Error('Пользователь с такой почтой уже существует');
         }
 
         const initials = data.name
@@ -80,9 +79,9 @@ export const useUserStore = create<UserState>()(
           ...data,
           id: `user_${Math.random().toString(36).substr(2, 9)}`,
           avatarInitials: initials.substring(0, 2),
-          // Если при регистрации передан тип организатор, сохраняем его
           userType: data.userType || 'explorer',
           role: data.userType === 'organizer' ? 'Организатор' : 'Исследователь',
+          followingOrganizerIds: [],
         };
 
         set(state => ({
@@ -93,14 +92,11 @@ export const useUserStore = create<UserState>()(
 
       completeRegistration: () => {
         const { user } = get();
-        if (user && user.id) {
-          set({ isAuthenticated: true });
-        }
+        if (user && user.id) set({ isAuthenticated: true });
       },
 
       login: async (email, password) => {
         await new Promise(resolve => setTimeout(resolve, 800));
-
         const { registeredUsers } = get();
         const existingUser = registeredUsers.find(
           u => u.email.toLowerCase() === email.toLowerCase() && u.password === password
@@ -109,9 +105,8 @@ export const useUserStore = create<UserState>()(
         if (existingUser) {
           set({ user: existingUser });
           return true;
-        } else {
-          return false;
         }
+        return false;
       },
 
       logout: () => {
@@ -120,53 +115,22 @@ export const useUserStore = create<UserState>()(
           const updatedUsers = registeredUsers.map(u => (u.id === user.id ? user : u));
           set({ registeredUsers: updatedUsers });
         }
-
-        set({
-          isAuthenticated: false,
-          user: { ...INITIAL_USER_DATA, id: '' },
-        });
+        set({ isAuthenticated: false, user: { ...INITIAL_USER_DATA, id: '' } });
       },
 
       updateInterests: interests => {
-        set(state => {
-          const updatedUser = { ...state.user, interests };
-          const updatedUsers = state.registeredUsers.map(u =>
-            u.id === updatedUser.id ? updatedUser : u
-          );
-          return {
-            user: updatedUser,
-            registeredUsers: updatedUsers,
-          };
-        });
+        const { user } = get();
+        if (user.userType === 'organizer') return; // Организаторы не имеют интересов
+
+        set(state => ({
+          user: { ...state.user, interests },
+        }));
       },
 
       updateProfile: data => {
-        set(state => {
-          const initials = data.name
-            ? data.name
-                .trim()
-                .split(/\s+/)
-                .map(n => n[0])
-                .join('')
-                .toUpperCase()
-                .substring(0, 2)
-            : state.user.avatarInitials;
-
-          const updatedUser = {
-            ...state.user,
-            ...data,
-            avatarInitials: initials,
-          };
-
-          const updatedUsers = state.registeredUsers.map(u =>
-            u.id === updatedUser.id ? updatedUser : u
-          );
-
-          return {
-            user: updatedUser,
-            registeredUsers: updatedUsers,
-          };
-        });
+        set(state => ({
+          user: { ...state.user, ...data },
+        }));
       },
 
       becomeOrganizer: () => {
@@ -175,42 +139,55 @@ export const useUserStore = create<UserState>()(
             ...state.user,
             userType: 'organizer',
             role: 'Организатор',
+            interests: [], // Удаляем интересы
+            followingOrganizerIds: [], // Удаляем подписки
           };
-          const updatedUsers = state.registeredUsers.map(u =>
-            u.id === updatedUser.id ? updatedUser : u
-          );
           return {
             user: updatedUser,
-            registeredUsers: updatedUsers,
+            registeredUsers: state.registeredUsers.map(u =>
+              u.id === updatedUser.id ? updatedUser : u
+            ),
           };
         });
       },
 
-      toggleFavorite: (eventId: string) => {
-        const currentUser = get().user;
-        // Организаторы не могут сохранять в избранное
-        if (currentUser.userType === 'organizer') return;
+      toggleFollow: organizerId => {
+        const { user } = get();
+        if (user.userType !== 'explorer') return; // Только исследователи могут подписываться
 
+        const following = user.followingOrganizerIds || [];
+        const isAlreadyFollowing = following.includes(organizerId);
+
+        const newList = isAlreadyFollowing
+          ? following.filter(id => id !== organizerId)
+          : [...following, organizerId];
+
+        set(state => ({
+          user: { ...state.user, followingOrganizerIds: newList },
+        }));
+      },
+
+      isFollowing: organizerId => {
+        return get().user.followingOrganizerIds?.includes(organizerId) || false;
+      },
+
+      toggleFavorite: eventId => {
+        const currentUser = get().user;
+        if (currentUser.userType === 'organizer') return;
         const isFav = currentUser.savedEventIds.includes(eventId);
         const newSavedIds = isFav
           ? currentUser.savedEventIds.filter(id => id !== eventId)
           : [...currentUser.savedEventIds, eventId];
-
-        const updatedUser = { ...currentUser, savedEventIds: newSavedIds };
-
         set(state => ({
-          user: updatedUser,
-          registeredUsers: state.registeredUsers.map(u =>
-            u.id === updatedUser.id ? updatedUser : u
-          ),
+          user: { ...state.user, savedEventIds: newSavedIds },
         }));
       },
 
-      isFavorite: (eventId: string) => get().user.savedEventIds.includes(eventId),
-      isPurchased: (eventId: string) =>
+      isFavorite: eventId => get().user.savedEventIds.includes(eventId),
+      isPurchased: eventId =>
         get().user.purchasedTickets.some(t => t.eventId === eventId),
 
-      buyTicket: (eventId: string, quantity: number) => {
+      buyTicket: (eventId, quantity) => {
         const currentUser = get().user;
         const newTicket: PurchasedTicket = {
           id: `TICK-${Math.random().toString(36).substring(2, 11).toUpperCase()}`,
@@ -218,18 +195,12 @@ export const useUserStore = create<UserState>()(
           quantity,
           purchaseDate: new Date().toISOString(),
         };
-
-        const updatedUser = {
-          ...currentUser,
-          hasTickets: true,
-          purchasedTickets: [newTicket, ...currentUser.purchasedTickets],
-        };
-
         set(state => ({
-          user: updatedUser,
-          registeredUsers: state.registeredUsers.map(u =>
-            u.id === updatedUser.id ? updatedUser : u
-          ),
+          user: {
+            ...state.user,
+            hasTickets: true,
+            purchasedTickets: [newTicket, ...state.user.purchasedTickets],
+          },
         }));
       },
 

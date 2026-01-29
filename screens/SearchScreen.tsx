@@ -15,15 +15,11 @@ import { colors, spacing, borderRadius, typography } from '../theme/colors';
 
 import HeroSection from '../components/HeroSection';
 import EventCard from '../components/EventCard';
-
-// Импортируем стор для получения динамических данных
 import { useEventStore } from '../store/eventStore';
 
 export default function SearchScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
-
-  // Получаем динамический список мероприятий
   const { events } = useEventStore();
 
   const [searchValue, setSearchValue] = useState('');
@@ -43,7 +39,6 @@ export default function SearchScreen() {
   }, [navigation]);
 
   const filteredEvents = useMemo(() => {
-    // Используем события из стора вместо статического массива
     let result = events;
 
     if (isSearching) {
@@ -82,7 +77,6 @@ export default function SearchScreen() {
 
         for (const [key, value] of Object.entries(currentFilters)) {
           if (!value || value === 'any' || key.startsWith('date_')) continue;
-
           if (key === 'district' && event.district !== value) return false;
           if (key === 'vibe' && event.vibe !== value) return false;
           if (key === 'age' && event.ageLimit < parseInt(value)) return false;
@@ -91,7 +85,6 @@ export default function SearchScreen() {
             !event.categories?.some(c => c.toLowerCase().includes(value.toLowerCase()))
           )
             return false;
-
           if (key === 'price') {
             if (value === 'free' && event.priceValue !== 0) return false;
             if (value === 'low' && (event.priceValue || 0) > 5000) return false;
@@ -101,14 +94,6 @@ export default function SearchScreen() {
             )
               return false;
             if (value === 'high' && (event.priceValue || 0) < 15000) return false;
-          }
-
-          if (key === 'time') {
-            const hour = new Date(event.timestamp).getHours();
-            if (value === 'morning' && (hour < 6 || hour >= 12)) return false;
-            if (value === 'afternoon' && (hour < 12 || hour >= 18)) return false;
-            if (value === 'evening' && (hour < 18 || hour >= 24)) return false;
-            if (value === 'night' && (hour < 0 || hour >= 6)) return false;
           }
         }
         return true;
@@ -143,14 +128,15 @@ export default function SearchScreen() {
           onApplyFilters={setCurrentFilters}
           autoApply={true}
           showApplyButton={false}
-          showTitle={false}
           compact={true}
         />
 
         <View style={styles.resultsWrapper}>
-          {isSearching && (
-            <View style={styles.resHead}>
-              <Text style={styles.resTitle}>Найдено: {filteredEvents.length}</Text>
+          <View style={styles.resHead}>
+            <Text style={styles.resTitle}>
+              {isSearching ? `Найдено: ${filteredEvents.length}` : 'Все мероприятия'}
+            </Text>
+            {isSearching && (
               <TouchableOpacity
                 onPress={() => {
                   setSearchValue('');
@@ -158,10 +144,10 @@ export default function SearchScreen() {
                   Keyboard.dismiss();
                 }}
               >
-                <Text style={styles.resetTxt}>Сбросить всё</Text>
+                <Text style={styles.resetTxt}>Сбросить</Text>
               </TouchableOpacity>
-            </View>
-          )}
+            )}
+          </View>
 
           {filteredEvents.map(event => (
             <EventCard
@@ -176,9 +162,7 @@ export default function SearchScreen() {
             <View style={styles.empty}>
               <Ionicons name="search-outline" size={64} color={colors.light.border} />
               <Text style={styles.emptyTxt}>Ничего не нашли...</Text>
-              <Text style={styles.emptySubTxt}>
-                Попробуйте изменить параметры поиска или фильтры
-              </Text>
+              <Text style={styles.emptySubTxt}>Попробуйте изменить параметры поиска</Text>
             </View>
           )}
         </View>
@@ -203,23 +187,17 @@ const styles = StyleSheet.create({
     fontSize: typography.xl,
     fontWeight: '700',
     color: colors.light.foreground,
-    includeFontPadding: false,
-    textAlignVertical: 'center',
   },
   container: { flex: 1 },
   resultsWrapper: {
     paddingHorizontal: spacing.lg,
     paddingBottom: 40,
   },
-  eventCardOverride: {
-    width: '100%',
-    marginBottom: spacing.md,
-  },
   resHead: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginVertical: spacing.md,
+    marginBottom: spacing.lg,
   },
   resTitle: {
     fontSize: typography.lg,
@@ -227,7 +205,8 @@ const styles = StyleSheet.create({
     color: colors.light.foreground,
   },
   resetTxt: { color: colors.light.primary, fontWeight: '600' },
-  empty: { alignItems: 'center', marginTop: 80, gap: 12 },
+  eventCardOverride: { width: '100%', marginBottom: spacing.md },
+  empty: { alignItems: 'center', marginTop: 60, gap: 12 },
   emptyTxt: {
     color: colors.light.foreground,
     fontSize: typography.lg,
@@ -237,6 +216,5 @@ const styles = StyleSheet.create({
     color: colors.light.mutedForeground,
     fontSize: typography.sm,
     textAlign: 'center',
-    paddingHorizontal: 40,
   },
 });
