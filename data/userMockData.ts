@@ -17,7 +17,7 @@ export interface UserData {
   name: string;
   username: string;
   email: string;
-  password?: string; // Для имитации бэкенда
+  password?: string;
   phone: string;
   location: string;
   bio: string;
@@ -32,6 +32,8 @@ export interface UserData {
   hasTickets: boolean;
   savedEventIds: string[];
   purchasedTickets: PurchasedTicket[];
+  followingOrganizerIds: string[];
+  birthDate: string; // Новое поле: ISO дата рождения (ГГГГ-ММ-ДД)
 }
 
 export const ALL_INTERESTS = [
@@ -52,7 +54,6 @@ export const ALL_INTERESTS = [
   'Здоровье',
 ];
 
-// Список городов без указания страны
 export const AVAILABLE_CITIES = [
   'Алматы',
   'Астана',
@@ -71,7 +72,7 @@ export const INITIAL_USER_DATA: UserData = {
   username: '',
   email: '',
   phone: '',
-  location: '', // Пусто по умолчанию
+  location: '',
   bio: '',
   avatarInitials: '',
   avatarUrl: null,
@@ -87,4 +88,6 @@ export const INITIAL_USER_DATA: UserData = {
   hasTickets: false,
   savedEventIds: [],
   purchasedTickets: [],
+  followingOrganizerIds: [],
+  birthDate: '2000-01-01', // Значение по умолчанию (взрослый), пока нет экрана ввода
 };

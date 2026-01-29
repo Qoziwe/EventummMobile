@@ -13,30 +13,47 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 
 import { colors, spacing, borderRadius, typography } from '../theme/colors';
-import CommunityCard from '../components/CommunityComponents/CommunityCard';
-import { COMMUNITIES, MOCK_POSTS } from '../data/communitiesMockData';
+import DiscussionCard from '../components/DiscussionComponents/DiscussionCard';
+import { useDiscussionStore } from '../store/discussionStore';
+import { useUserStore } from '../store/userStore';
+import { DISCUSSION_CATEGORIES } from '../data/discussionMockData';
 
-const defaultCategories = [
-  { id: 'all', label: 'Все', icon: 'apps-outline' },
-  { id: 'music', label: 'Музыка', icon: 'musical-notes-outline' },
-  { id: 'tech', label: 'Технологии', icon: 'hardware-chip-outline' },
-  { id: 'sport', label: 'Спорт', icon: 'fitness-outline' },
-  { id: 'food', label: 'Еда', icon: 'restaurant-outline' },
-];
+const calculateUserAge = (birthDate: string): number => {
+  const today = new Date();
+  const birthDateObj = new Date(birthDate);
+  let age = today.getFullYear() - birthDateObj.getFullYear();
+  const m = today.getMonth() - birthDateObj.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < birthDateObj.getDate())) {
+    age--;
+  }
+  return age;
+};
 
-export default function CommunitiesScreen() {
-  const navigation = useNavigation();
+export default function DiscussionsScreen() {
+  const navigation = useNavigation<any>();
+  const { posts } = useDiscussionStore();
+  const { user } = useUserStore();
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchValue, setSearchValue] = useState<string>('');
 
-  const filteredCommunities = useMemo(() => {
-    return COMMUNITIES.filter(c => {
-      const matchesSearch = c.name.toLowerCase().includes(searchValue.toLowerCase());
+  const userAge = useMemo(() => calculateUserAge(user.birthDate), [user.birthDate]);
+  const categories = DISCUSSION_CATEGORIES || [];
+
+  const filteredPosts = useMemo(() => {
+    const currentPosts = posts || [];
+    return currentPosts.filter(p => {
+      // КИБЕРБЕЗОПАСНОСТЬ: Фильтрация по возрасту
+      const isAgeAppropriate = userAge >= (p.ageLimit || 0);
+      if (!isAgeAppropriate) return false;
+
+      const matchesSearch =
+        p.content.toLowerCase().includes(searchValue.toLowerCase()) ||
+        p.authorName.toLowerCase().includes(searchValue.toLowerCase());
       const matchesCategory =
-        selectedCategory === 'all' || c.categorySlug === selectedCategory;
+        selectedCategory === 'all' || p.categorySlug === selectedCategory;
       return matchesSearch && matchesCategory;
     });
-  }, [searchValue, selectedCategory]);
+  }, [searchValue, selectedCategory, posts, userAge]);
 
   return (
     <SafeAreaView style={styles.fullContainer} edges={['top']}>
@@ -46,32 +63,35 @@ export default function CommunitiesScreen() {
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={24} color={colors.light.foreground} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Сообщества</Text>
-        <TouchableOpacity style={styles.headerButtonRight}>
+        <Text style={styles.headerTitle}>Обсуждения</Text>
+        <TouchableOpacity
+          style={styles.headerButtonRight}
+          onPress={() => navigation.navigate('CreateDiscussion')}
+        >
           <Ionicons name="add" size={28} color={colors.light.primary} />
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-        <View style={styles.searchWrapper}>
-          <View style={styles.searchContainer}>
-            <Ionicons name="search" size={20} color={colors.light.mutedForeground} />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Поиск сообществ..."
-              placeholderTextColor={colors.light.mutedForeground}
-              value={searchValue}
-              onChangeText={setSearchValue}
-            />
-          </View>
+      <View style={styles.searchWrapper}>
+        <View style={styles.searchContainer}>
+          <Ionicons name="search" size={20} color={colors.light.mutedForeground} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Поиск по темам..."
+            placeholderTextColor={colors.light.mutedForeground}
+            value={searchValue}
+            onChangeText={setSearchValue}
+          />
         </View>
+      </View>
 
+      <View>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.categoriesContainer}
         >
-          {defaultCategories.map(category => {
+          {categories.map(category => {
             const isActive = selectedCategory === category.id;
             return (
               <TouchableOpacity
@@ -93,23 +113,30 @@ export default function CommunitiesScreen() {
             );
           })}
         </ScrollView>
+      </View>
 
-        <View style={styles.communitiesGrid}>
-          {filteredCommunities.map(community => (
-            <CommunityCard
-              key={community.id}
-              {...community}
-              onPress={() => {
-                const post = MOCK_POSTS.find(p => p.communityId === community.id);
-                if (post)
-                  navigation.navigate(
-                    'PostThread' as never,
-                    { postId: post.id } as never
-                  );
-              }}
-            />
-          ))}
+      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+        <View style={styles.listContent}>
+          {filteredPosts.length > 0 ? (
+            filteredPosts.map(post => (
+              <DiscussionCard
+                key={post.id}
+                {...post}
+                onPress={() => navigation.navigate('PostThread', { postId: post.id })}
+              />
+            ))
+          ) : (
+            <View style={styles.emptyState}>
+              <Ionicons
+                name="chatbubbles-outline"
+                size={48}
+                color={colors.light.border}
+              />
+              <Text style={styles.emptyText}>Обсуждений не найдено</Text>
+            </View>
+          )}
         </View>
+        <View style={{ height: 40 }} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -139,7 +166,7 @@ const styles = StyleSheet.create({
     color: colors.light.foreground,
   },
   container: { flex: 1 },
-  searchWrapper: { paddingHorizontal: spacing.lg, paddingTop: spacing.lg }, // Унифицирован отступ
+  searchWrapper: { paddingHorizontal: spacing.lg, paddingTop: spacing.lg },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -168,13 +195,11 @@ const styles = StyleSheet.create({
   },
   categoryChipActive: {
     borderColor: colors.light.primary,
-    backgroundColor: colors.light.secondary,
+    backgroundColor: `${colors.light.primary}08`,
   },
   categoryLabel: { fontSize: typography.sm, color: colors.light.foreground },
   categoryLabelActive: { color: colors.light.primary, fontWeight: '600' },
-  communitiesGrid: {
-    paddingHorizontal: spacing.lg,
-    paddingBottom: 40,
-    gap: spacing.md, // Теперь карточки идут одна под другой
-  },
+  listContent: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
+  emptyState: { alignItems: 'center', marginTop: 60, gap: 12 },
+  emptyText: { color: colors.light.mutedForeground, fontSize: 16, fontWeight: '500' },
 });

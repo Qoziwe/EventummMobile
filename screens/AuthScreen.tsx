@@ -14,6 +14,7 @@ import {
   Animated,
   Keyboard,
   Modal,
+  FlatList,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, borderRadius, typography } from '../theme/colors';
@@ -22,6 +23,32 @@ import { ALL_INTERESTS, UserRole, AVAILABLE_CITIES } from '../data/userMockData'
 import { useToast } from '../components/ToastProvider';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+
+const DAYS = Array.from({ length: 31 }, (_, i) => ({
+  id: `d${i + 1}`,
+  label: `${i + 1}`,
+  value: (i + 1).toString().padStart(2, '0'),
+}));
+
+const MONTHS = [
+  { id: 'm0', label: 'Января', value: '01' },
+  { id: 'm1', label: 'Февраля', value: '02' },
+  { id: 'm2', label: 'Марта', value: '03' },
+  { id: 'm3', label: 'Апреля', value: '04' },
+  { id: 'm4', label: 'Мая', value: '05' },
+  { id: 'm5', label: 'Июня', value: '06' },
+  { id: 'm6', label: 'Июля', value: '07' },
+  { id: 'm7', label: 'Августа', value: '08' },
+  { id: 'm8', label: 'Сентября', value: '09' },
+  { id: 'm9', label: 'Октября', value: '10' },
+  { id: 'm10', label: 'Ноября', value: '11' },
+  { id: 'm11', label: 'Декабря', value: '12' },
+];
+
+const YEARS = Array.from({ length: 80 }, (_, i) => {
+  const year = 2024 - i;
+  return { id: `y${year}`, label: `${year}`, value: `${year}` };
+});
 
 const FadeInView = ({ children, delay = 0, style = {} }: any) => {
   const anim = useRef(new Animated.Value(0)).current;
@@ -59,12 +86,20 @@ export default function AuthScreen() {
   const [password, setPassword] = useState('');
   const [location, setLocation] = useState('');
   const [showCityPicker, setShowCityPicker] = useState(false);
+
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [selDay, setSelDay] = useState('01');
+  const [selMonth, setSelMonth] = useState('01');
+  const [selYear, setSelYear] = useState('2000');
+  const [birthDate, setBirthDate] = useState(''); // ГГГГ-ММ-ДД
+
   const [role, setRole] = useState<UserRole>('explorer');
   const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
 
   const floatingAnim = useRef(new Animated.Value(0)).current;
   const cityModalAnim = useRef(new Animated.Value(0)).current;
+  const dateModalAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.loop(
@@ -88,23 +123,13 @@ export default function AuthScreen() {
       { id: 'welcome', type: 'welcome' },
       { id: 'form', type: 'form' },
     ];
-
     if (user.id) {
-      if (authMode === 'signup' && role === 'explorer') {
+      if (authMode === 'signup' && role === 'explorer')
         s.push({ id: 'interests', type: 'interests' });
-      }
       s.push({ id: 'success', type: 'success' });
     }
     return s;
   }, [authMode, role, user.id]);
-
-  useEffect(() => {
-    if (user.id && currentIndex === 1) {
-      setTimeout(() => {
-        flatListRef.current?.scrollToIndex({ index: 2, animated: true });
-      }, 300);
-    }
-  }, [user.id]);
 
   const openCityPicker = () => {
     setShowCityPicker(true);
@@ -120,20 +145,36 @@ export default function AuthScreen() {
       toValue: 0,
       duration: 300,
       useNativeDriver: true,
-    }).start(() => {
-      setShowCityPicker(false);
-    });
+    }).start(() => setShowCityPicker(false));
   };
 
-  const scrollToNext = () => {
-    if (currentIndex < steps.length - 1) {
-      flatListRef.current?.scrollToIndex({ index: currentIndex + 1, animated: true });
-    }
+  const openDatePicker = () => {
+    setShowDatePicker(true);
+    Animated.timing(dateModalAnim, {
+      toValue: 1,
+      duration: 400,
+      useNativeDriver: true,
+    }).start();
   };
 
-  const handleStart = (mode: 'login' | 'signup') => {
-    setAuthMode(mode);
-    flatListRef.current?.scrollToIndex({ index: 1, animated: true });
+  const closeDatePicker = () => {
+    Animated.timing(dateModalAnim, {
+      toValue: 0,
+      duration: 300,
+      useNativeDriver: true,
+    }).start(() => setShowDatePicker(false));
+  };
+
+  const handleConfirmDate = () => {
+    setBirthDate(`${selYear}-${selMonth}-${selDay}`);
+    closeDatePicker();
+  };
+
+  const getDisplayDate = () => {
+    if (!birthDate) return 'Дата рождения';
+    const [y, m, d] = birthDate.split('-');
+    const monthLabel = MONTHS.find(mon => mon.value === m)?.label;
+    return `${parseInt(d)} ${monthLabel} ${y}`;
   };
 
   const handleAuthAction = async () => {
@@ -150,14 +191,16 @@ export default function AuthScreen() {
           setLoading(false);
           return;
         }
-        if (!location) {
-          showToast({ message: 'Пожалуйста, выберите ваш город', type: 'error' });
+        if (!birthDate) {
+          showToast({ message: 'Укажите дату рождения', type: 'error' });
           setLoading(false);
           return;
         }
-
-        // Определяем текстовую роль для отображения в профиле
-        const displayRole = role === 'organizer' ? 'Организатор' : 'Исследователь';
+        if (!location) {
+          showToast({ message: 'Выберите ваш город', type: 'error' });
+          setLoading(false);
+          return;
+        }
 
         await register({
           name,
@@ -165,23 +208,17 @@ export default function AuthScreen() {
           password,
           userType: role,
           location,
-          role: displayRole, // Явно передаем роль для профиля
+          birthDate,
+          role: role === 'organizer' ? 'Организатор' : 'Исследователь',
         });
-
-        Keyboard.dismiss();
         showToast({ message: 'Аккаунт успешно создан!', type: 'success' });
       } else {
         const success = await login(email, password);
-        if (success) {
-          Keyboard.dismiss();
-          showToast({ message: 'С возвращением!', type: 'success' });
-        } else {
-          showToast({ message: 'Неверный email или пароль.', type: 'error' });
-        }
+        if (success) showToast({ message: 'С возвращением!', type: 'success' });
+        else showToast({ message: 'Неверный email или пароль.', type: 'error' });
       }
     } catch (error: any) {
-      const errorMessage = error.message || 'Произошла непредвиденная ошибка';
-      showToast({ message: errorMessage, type: 'error' });
+      showToast({ message: error.message || 'Ошибка', type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -193,16 +230,12 @@ export default function AuthScreen() {
       return;
     }
     updateInterests(selectedInterests);
-    scrollToNext();
+    flatListRef.current?.scrollToIndex({ index: currentIndex + 1, animated: true });
   };
 
-  const handleFinalAppOpen = () => {
-    if (!user || !user.id) {
-      showToast({ message: 'Пожалуйста, сначала зарегистрируйтесь', type: 'error' });
-      flatListRef.current?.scrollToIndex({ index: 1, animated: true });
-      return;
-    }
-    completeRegistration();
+  const handleStart = (mode: 'login' | 'signup') => {
+    setAuthMode(mode);
+    flatListRef.current?.scrollToIndex({ index: 1, animated: true });
   };
 
   const renderCityPicker = () => {
@@ -210,7 +243,6 @@ export default function AuthScreen() {
       inputRange: [0, 1],
       outputRange: [0, 1],
     });
-
     const cardTranslateY = cityModalAnim.interpolate({
       inputRange: [0, 1],
       outputRange: [SCREEN_HEIGHT, 0],
@@ -231,7 +263,6 @@ export default function AuthScreen() {
               onPress={closeCityPicker}
             />
           </Animated.View>
-
           <Animated.View
             style={[
               styles.modalPaymentCard,
@@ -244,38 +275,187 @@ export default function AuthScreen() {
                 <Ionicons name="close" size={28} color={colors.light.foreground} />
               </TouchableOpacity>
             </View>
-
             <ScrollView
               showsVerticalScrollIndicator={false}
               style={styles.cityListScroll}
             >
-              {AVAILABLE_CITIES.map(city => (
-                <TouchableOpacity
-                  key={city}
-                  style={[styles.cityItem, location === city && styles.cityItemActive]}
-                  onPress={() => {
-                    setLocation(city);
-                    closeCityPicker();
-                  }}
-                >
-                  <Text
+              {AVAILABLE_CITIES.map(city => {
+                const isAvailable = city === 'Алматы';
+                return (
+                  <TouchableOpacity
+                    key={city}
+                    disabled={!isAvailable}
                     style={[
-                      styles.cityItemText,
-                      location === city && styles.cityItemTextActive,
+                      styles.cityItem,
+                      location === city && styles.cityItemActive,
+                      !isAvailable && styles.cityItemDisabled,
                     ]}
+                    onPress={() => {
+                      setLocation(city);
+                      closeCityPicker();
+                    }}
                   >
-                    {city}
-                  </Text>
-                  {location === city && (
-                    <Ionicons
-                      name="checkmark-circle"
-                      size={22}
-                      color={colors.light.primary}
-                    />
-                  )}
-                </TouchableOpacity>
-              ))}
+                    <View style={styles.flex}>
+                      <Text
+                        style={[
+                          styles.cityItemText,
+                          location === city && styles.cityItemTextActive,
+                          !isAvailable && styles.cityItemTextDisabled,
+                        ]}
+                      >
+                        {city}
+                      </Text>
+                      {!isAvailable && (
+                        <Text style={styles.comingSoonText}>Скоро открытие</Text>
+                      )}
+                    </View>
+                    {location === city && (
+                      <Ionicons
+                        name="checkmark-circle"
+                        size={22}
+                        color={colors.light.primary}
+                      />
+                    )}
+                    {!isAvailable && (
+                      <Ionicons
+                        name="time-outline"
+                        size={20}
+                        color={colors.light.mutedForeground}
+                      />
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
             </ScrollView>
+          </Animated.View>
+        </View>
+      </Modal>
+    );
+  };
+
+  const renderDatePicker = () => {
+    const backdropOpacity = dateModalAnim.interpolate({
+      inputRange: [0, 1],
+      outputRange: [0, 1],
+    });
+    const cardTranslateY = dateModalAnim.interpolate({
+      inputRange: [0, 1],
+      outputRange: [SCREEN_HEIGHT, 0],
+    });
+
+    return (
+      <Modal
+        visible={showDatePicker}
+        transparent
+        animationType="none"
+        onRequestClose={closeDatePicker}
+      >
+        <View style={styles.modalRoot}>
+          <Animated.View style={[styles.modalBackdrop, { opacity: backdropOpacity }]}>
+            <TouchableOpacity
+              style={styles.flex}
+              activeOpacity={1}
+              onPress={closeDatePicker}
+            />
+          </Animated.View>
+          <Animated.View
+            style={[
+              styles.modalPaymentCard,
+              { transform: [{ translateY: cardTranslateY }] },
+            ]}
+          >
+            <View style={styles.modalPaymentHeader}>
+              <Text style={styles.modalPaymentTitle}>Дата рождения</Text>
+              <TouchableOpacity onPress={closeDatePicker}>
+                <Ionicons name="close" size={28} color={colors.light.foreground} />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.datePickerContent}>
+              <View style={styles.pickerCol}>
+                <Text style={styles.colLabel}>День</Text>
+                <FlatList
+                  data={DAYS}
+                  showsVerticalScrollIndicator={false}
+                  keyExtractor={i => i.id}
+                  renderItem={({ item }) => (
+                    <TouchableOpacity
+                      onPress={() => setSelDay(item.value)}
+                      style={[
+                        styles.pickerOpt,
+                        item.value === selDay && styles.pickerOptActive,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.pickerOptText,
+                          item.value === selDay && styles.pickerOptTextActive,
+                        ]}
+                      >
+                        {item.label}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                />
+              </View>
+              <View style={[styles.pickerCol, { flex: 1.5 }]}>
+                <Text style={styles.colLabel}>Месяц</Text>
+                <FlatList
+                  data={MONTHS}
+                  showsVerticalScrollIndicator={false}
+                  keyExtractor={i => i.id}
+                  renderItem={({ item }) => (
+                    <TouchableOpacity
+                      onPress={() => setSelMonth(item.value)}
+                      style={[
+                        styles.pickerOpt,
+                        item.value === selMonth && styles.pickerOptActive,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.pickerOptText,
+                          item.value === selMonth && styles.pickerOptTextActive,
+                        ]}
+                      >
+                        {item.label}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                />
+              </View>
+              <View style={styles.pickerCol}>
+                <Text style={styles.colLabel}>Год</Text>
+                <FlatList
+                  data={YEARS}
+                  showsVerticalScrollIndicator={false}
+                  keyExtractor={i => i.id}
+                  renderItem={({ item }) => (
+                    <TouchableOpacity
+                      onPress={() => setSelYear(item.value)}
+                      style={[
+                        styles.pickerOpt,
+                        item.value === selYear && styles.pickerOptActive,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.pickerOptText,
+                          item.value === selYear && styles.pickerOptTextActive,
+                        ]}
+                      >
+                        {item.label}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                />
+              </View>
+            </View>
+            <TouchableOpacity
+              style={[styles.primaryButton, { marginTop: spacing.lg }]}
+              onPress={handleConfirmDate}
+            >
+              <Text style={styles.primaryButtonText}>Подтвердить</Text>
+            </TouchableOpacity>
           </Animated.View>
         </View>
       </Modal>
@@ -332,7 +512,6 @@ export default function AuthScreen() {
         </View>
       );
     }
-
     if (item.type === 'form') {
       return (
         <ScrollView
@@ -370,9 +549,28 @@ export default function AuthScreen() {
               value={password}
               onChangeText={setPassword}
             />
-
             {authMode === 'signup' && (
               <>
+                <TouchableOpacity style={styles.citySelector} onPress={openDatePicker}>
+                  <Ionicons
+                    name="calendar-outline"
+                    size={20}
+                    color={colors.light.primary}
+                  />
+                  <Text
+                    style={[
+                      styles.citySelectorText,
+                      !birthDate && { color: colors.light.mutedForeground },
+                    ]}
+                  >
+                    {getDisplayDate()}
+                  </Text>
+                  <Ionicons
+                    name="chevron-down"
+                    size={18}
+                    color={colors.light.mutedForeground}
+                  />
+                </TouchableOpacity>
                 <TouchableOpacity style={styles.citySelector} onPress={openCityPicker}>
                   <Ionicons
                     name="location-outline"
@@ -393,7 +591,6 @@ export default function AuthScreen() {
                     color={colors.light.mutedForeground}
                   />
                 </TouchableOpacity>
-
                 <View>
                   <Text style={styles.label}>Выбери свою роль:</Text>
                   <View style={styles.roleContainer}>
@@ -483,7 +680,6 @@ export default function AuthScreen() {
         </ScrollView>
       );
     }
-
     if (item.type === 'interests') {
       return (
         <View style={styles.page}>
@@ -501,13 +697,13 @@ export default function AuthScreen() {
                   styles.interestChip,
                   selectedInterests.includes(interest) && styles.interestChipActive,
                 ]}
-                onPress={() => {
+                onPress={() =>
                   setSelectedInterests(prev =>
                     prev.includes(interest)
                       ? prev.filter(it => it !== interest)
                       : [...prev, interest]
-                  );
-                }}
+                  )
+                }
               >
                 <Text
                   style={[
@@ -535,7 +731,6 @@ export default function AuthScreen() {
         </View>
       );
     }
-
     if (item.type === 'success') {
       return (
         <View style={styles.page}>
@@ -547,10 +742,10 @@ export default function AuthScreen() {
           </Text>
           <Text style={styles.stepDescription}>
             {authMode === 'login'
-              ? 'Авторизация прошла успешно. Приятного использования!'
-              : 'Регистрация успешно завершена. Теперь весь город в твоем смартфоне.'}
+              ? 'Авторизация прошла успешно.'
+              : 'Регистрация завершена.'}
           </Text>
-          <TouchableOpacity style={styles.primaryButton} onPress={handleFinalAppOpen}>
+          <TouchableOpacity style={styles.primaryButton} onPress={completeRegistration}>
             <Text style={styles.primaryButtonText}>Открыть приложение</Text>
           </TouchableOpacity>
         </View>
@@ -567,35 +762,40 @@ export default function AuthScreen() {
       >
         <View style={styles.header}>
           <View style={styles.pagination}>
-            {steps.map((_, i) => {
-              const inputRange = [
-                (i - 1) * SCREEN_WIDTH,
-                i * SCREEN_WIDTH,
-                (i + 1) * SCREEN_WIDTH,
-              ];
-              const dotWidth = scrollX.interpolate({
-                inputRange,
-                outputRange: [10, 30, 10],
-                extrapolate: 'clamp',
-              });
-              const opacity = scrollX.interpolate({
-                inputRange,
-                outputRange: [0.3, 1, 0.3],
-                extrapolate: 'clamp',
-              });
-              return (
-                <Animated.View
-                  key={i}
-                  style={[styles.dot, { width: dotWidth, opacity }]}
-                />
-              );
-            })}
+            {steps.map((_, i) => (
+              <Animated.View
+                key={i}
+                style={[
+                  styles.dot,
+                  {
+                    width: scrollX.interpolate({
+                      inputRange: [
+                        (i - 1) * SCREEN_WIDTH,
+                        i * SCREEN_WIDTH,
+                        (i + 1) * SCREEN_WIDTH,
+                      ],
+                      outputRange: [10, 30, 10],
+                      extrapolate: 'clamp',
+                    }),
+                    opacity: scrollX.interpolate({
+                      inputRange: [
+                        (i - 1) * SCREEN_WIDTH,
+                        i * SCREEN_WIDTH,
+                        (i + 1) * SCREEN_WIDTH,
+                      ],
+                      outputRange: [0.3, 1, 0.3],
+                      extrapolate: 'clamp',
+                    }),
+                  },
+                ]}
+              />
+            ))}
           </View>
         </View>
         <Animated.FlatList
           ref={flatListRef}
           data={steps}
-          extraData={[currentIndex, user.id, authMode, steps.length, location]}
+          extraData={[currentIndex, user.id, authMode, steps.length, location, birthDate]}
           renderItem={renderStep}
           keyExtractor={item => item.id}
           horizontal
@@ -608,16 +808,15 @@ export default function AuthScreen() {
           onScroll={Animated.event([{ nativeEvent: { contentOffset: { x: scrollX } } }], {
             useNativeDriver: false,
           })}
-          scrollEnabled={true}
           getItemLayout={(_, index) => ({
             length: SCREEN_WIDTH,
             offset: SCREEN_WIDTH * index,
             index,
           })}
-          contentContainerStyle={styles.flatListContent}
         />
       </KeyboardAvoidingView>
       {renderCityPicker()}
+      {renderDatePicker()}
     </SafeAreaView>
   );
 }
@@ -628,7 +827,6 @@ const styles = StyleSheet.create({
   header: { height: 60, justifyContent: 'center', alignItems: 'center' },
   pagination: { flexDirection: 'row', gap: 8 },
   dot: { height: 6, borderRadius: 3, backgroundColor: colors.light.primary },
-  flatListContent: {},
   page: {
     width: SCREEN_WIDTH,
     paddingHorizontal: spacing.xl,
@@ -711,6 +909,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+    marginBottom: 10,
   },
   citySelectorText: {
     flex: 1,
@@ -795,16 +994,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: spacing['2xl'],
   },
-
-  // Стили для анимированной модалки (как в EventDetail)
-  modalRoot: {
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
-  modalBackdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-  },
+  modalRoot: { flex: 1, justifyContent: 'flex-end' },
+  modalBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)' },
   modalPaymentCard: {
     backgroundColor: colors.light.background,
     borderTopLeftRadius: 30,
@@ -821,14 +1012,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.light.border,
   },
-  modalPaymentTitle: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: colors.light.foreground,
-  },
-  cityListScroll: {
-    marginBottom: 20,
-  },
+  modalPaymentTitle: { fontSize: 22, fontWeight: '800', color: colors.light.foreground },
+  cityListScroll: { marginBottom: 20 },
   cityItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -837,16 +1022,34 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.light.border,
   },
-  cityItemActive: {
-    backgroundColor: `${colors.light.primary}05`,
-  },
-  cityItemText: {
-    fontSize: 16,
-    color: colors.light.foreground,
+  cityItemActive: { backgroundColor: `${colors.light.primary}05` },
+  cityItemDisabled: { opacity: 0.6 },
+  cityItemText: { fontSize: 16, color: colors.light.foreground, fontWeight: '500' },
+  cityItemTextActive: { color: colors.light.primary, fontWeight: '700' },
+  cityItemTextDisabled: { color: colors.light.mutedForeground },
+  comingSoonText: {
+    fontSize: 12,
+    color: colors.light.mutedForeground,
     fontWeight: '500',
+    marginTop: 2,
   },
-  cityItemTextActive: {
-    color: colors.light.primary,
+  datePickerContent: { flexDirection: 'row', height: 200 },
+  pickerCol: { flex: 1 },
+  colLabel: {
+    textAlign: 'center',
+    fontSize: 10,
+    color: colors.light.mutedForeground,
     fontWeight: '700',
+    marginBottom: 10,
+    textTransform: 'uppercase',
   },
+  pickerOpt: {
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderRadius: 8,
+    marginHorizontal: 4,
+  },
+  pickerOptActive: { backgroundColor: colors.light.primary },
+  pickerOptText: { fontSize: 15, color: colors.light.foreground },
+  pickerOptTextActive: { color: '#fff', fontWeight: '700' },
 });

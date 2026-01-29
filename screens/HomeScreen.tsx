@@ -21,38 +21,45 @@ import EventsGrid from '../components/EventsGrid';
 import Footer from '../components/Footer';
 import EventCard from '../components/EventCard';
 
-// Импортируем сторы
 import { useEventStore } from '../store/eventStore';
 import { useUserStore } from '../store/userStore';
-import { COMMUNITIES, MOCK_POSTS } from '../data/communitiesMockData';
+import { useDiscussionStore } from '../store/discussionStore';
+
+const calculateUserAge = (birthDate: string): number => {
+  const today = new Date();
+  const birthDateObj = new Date(birthDate);
+  let age = today.getFullYear() - birthDateObj.getFullYear();
+  const m = today.getMonth() - birthDateObj.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < birthDateObj.getDate())) {
+    age--;
+  }
+  return age;
+};
 
 export default function HomeScreen() {
   const navigation = useNavigation<any>();
   const { events } = useEventStore();
   const { user } = useUserStore();
+  const { posts } = useDiscussionStore();
 
   const [activeFilters, setActiveFilters] = useState<Record<string, string>>({});
   const [visiblePopularCount, setVisiblePopularCount] = useState(8);
 
-  // Динамический расчет секции "Для вас" на основе интересов пользователя
+  const userAge = useMemo(() => calculateUserAge(user.birthDate), [user.birthDate]);
+
   const forYouEvents = useMemo(() => {
     if (!user.interests || user.interests.length === 0) {
       const special = events.filter(e => e.isForYou);
       const regular = events.filter(e => !e.isForYou);
       return special.concat(regular).slice(0, 20);
     }
-
     const userInterestsLower = user.interests.map(i => i.toLowerCase());
-
     const matched = events.filter(e => {
       if (!e.categories || e.categories.length === 0) return false;
       return e.categories.some(cat => userInterestsLower.includes(cat.toLowerCase()));
     });
-
-    if (matched.length === 0) {
+    if (matched.length === 0)
       return events.filter(e => e.isForYou || e.stats > 500).slice(0, 10);
-    }
-
     return matched
       .sort((a, b) => {
         if (a.isForYou && !b.isForYou) return -1;
@@ -72,7 +79,6 @@ export default function HomeScreen() {
       now.getDate() + daysToMonday
     ).getTime();
     const nextSunEnd = nextMon + 7 * 24 * 60 * 60 * 1000 - 1;
-
     const strict = events.filter(
       e => e.timestamp >= nextMon && e.timestamp <= nextSunEnd
     );
@@ -87,10 +93,14 @@ export default function HomeScreen() {
   }, [events, visiblePopularCount]);
 
   const trendingDiscussions = useMemo(() => {
-    return [...MOCK_POSTS]
-      .sort((a, b) => b.upvotes - b.downvotes - (a.upvotes - a.downvotes))
-      .slice(0, 2);
-  }, []);
+    return (
+      [...(posts || [])]
+        // КИБЕРБЕЗОПАСНОСТЬ: Фильтрация в трендах
+        .filter(p => userAge >= (p.ageLimit || 0))
+        .sort((a, b) => b.upvotes - b.downvotes - (a.upvotes - a.downvotes))
+        .slice(0, 2)
+    );
+  }, [posts, userAge]);
 
   function handleScroll(event: NativeSyntheticEvent<NativeScrollEvent>) {
     const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
@@ -177,46 +187,46 @@ export default function HomeScreen() {
           </View>
           <Text style={styles.sectionSubtitle}>Активные темы в сообществах</Text>
 
-          {trendingDiscussions.map(post => {
-            const community = COMMUNITIES.find(c => c.id === post.communityId);
-            return (
-              <TouchableOpacity
-                key={post.id}
-                style={styles.discussionCard}
-                onPress={() => navigation.navigate('PostThread', { postId: post.id })}
-              >
-                <View style={styles.discussionHeader}>
-                  <Text style={styles.discussionCommunity}>
-                    {community?.name || 'Сообщество'}
-                  </Text>
-                  <Text style={styles.discussionTime}>{post.timestamp}</Text>
-                </View>
-                <Text style={styles.discussionContent} numberOfLines={2}>
-                  {post.content}
+          {trendingDiscussions.map(post => (
+            <TouchableOpacity
+              key={post.id}
+              style={styles.discussionCard}
+              onPress={() => navigation.navigate('PostThread', { postId: post.id })}
+            >
+              <View style={styles.discussionHeader}>
+                <Text style={styles.discussionCommunity}>{post.categoryName}</Text>
+                <Text style={styles.discussionTime}>
+                  {new Date(post.timestamp).toLocaleTimeString([], {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
                 </Text>
-                <View style={styles.discussionFooter}>
-                  <View style={styles.statItem}>
-                    <Ionicons name="arrow-up" size={14} color={colors.light.primary} />
-                    <Text style={styles.statText}>{post.upvotes - post.downvotes}</Text>
-                  </View>
-                  <View style={styles.statItem}>
-                    <Ionicons
-                      name="chatbubble-outline"
-                      size={14}
-                      color={colors.light.mutedForeground}
-                    />
-                    <Text style={styles.statText}>{post.commentCount}</Text>
-                  </View>
+              </View>
+              <Text style={styles.discussionContent} numberOfLines={2}>
+                {post.content}
+              </Text>
+              <View style={styles.discussionFooter}>
+                <View style={styles.statItem}>
+                  <Ionicons name="arrow-up" size={14} color={colors.light.primary} />
+                  <Text style={styles.statText}>{post.upvotes - post.downvotes}</Text>
                 </View>
-              </TouchableOpacity>
-            );
-          })}
+                <View style={styles.statItem}>
+                  <Ionicons
+                    name="chatbubble-outline"
+                    size={14}
+                    color={colors.light.mutedForeground}
+                  />
+                  <Text style={styles.statText}>{post.commentCount}</Text>
+                </View>
+              </View>
+            </TouchableOpacity>
+          ))}
 
           <TouchableOpacity
             style={styles.viewAllCommunitiesButton}
             onPress={() => navigation.navigate('Communities')}
           >
-            <Text style={styles.viewAllText}>Все сообщества</Text>
+            <Text style={styles.viewAllText}>Все обсуждения</Text>
             <Ionicons name="arrow-forward" size={16} color={colors.light.foreground} />
           </TouchableOpacity>
         </View>

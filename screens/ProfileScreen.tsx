@@ -13,6 +13,7 @@ import { useNavigation } from '@react-navigation/native';
 import { colors, spacing, borderRadius, typography } from '../theme/colors';
 import { useUserStore } from '../store/userStore';
 import { useEventStore } from '../store/eventStore';
+import { useDiscussionStore } from '../store/discussionStore'; // Убедитесь, что этот импорт есть
 import { useToast } from '../components/ToastProvider';
 
 import FavoritesList from '../components/ProfileComponents/FavoritesList';
@@ -22,6 +23,7 @@ export default function ProfileScreen() {
   const navigation = useNavigation<any>();
   const { user, logout, clearAllData, becomeOrganizer } = useUserStore();
   const { clearAllEvents } = useEventStore();
+  const { clearAllDiscussions } = useDiscussionStore(); // Подключаем метод
   const { showToast } = useToast();
 
   const [activeTab, setActiveTab] = useState<'tickets' | 'favorites'>('tickets');
@@ -50,9 +52,16 @@ export default function ProfileScreen() {
   };
 
   const handleSecretClear = async () => {
-    await clearAllData();
-    await clearAllEvents();
-    showToast({ message: 'Данные успешно сброшены', type: 'success' });
+    try {
+      // Последовательно очищаем все хранилища
+      await clearAllData();
+      await clearAllEvents();
+      await clearAllDiscussions();
+
+      showToast({ message: 'Все данные (вкл. обсуждения) сброшены', type: 'success' });
+    } catch (error) {
+      showToast({ message: 'Ошибка при сбросе данных', type: 'error' });
+    }
   };
 
   const menuItems = [
@@ -80,10 +89,10 @@ export default function ProfileScreen() {
       screen: 'SavedEvents',
     },
     {
-      id: 'my_communities',
-      title: 'Мои сообщества',
-      icon: 'people-outline',
-      screen: 'Communities',
+      id: 'my_discussions',
+      title: 'Мои обсуждения',
+      icon: 'chatbubbles-outline',
+      screen: 'Communities', // Здесь остается имя роута из App.tsx (Communities)
     },
     { id: 'settings', title: 'Настройки', icon: 'settings-outline', screen: 'Settings' },
   ];
@@ -93,7 +102,6 @@ export default function ProfileScreen() {
       <StatusBar barStyle="dark-content" backgroundColor={colors.light.background} />
 
       <View style={styles.header}>
-        {/* КНОПКА НАЗАД ДОБАВЛЕНА ТУТ */}
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={24} color={colors.light.foreground} />
         </TouchableOpacity>
@@ -148,9 +156,9 @@ export default function ProfileScreen() {
             <Text style={styles.statLabel}>Сохранено</Text>
           </View>
           <View style={styles.statCard}>
-            <Ionicons name="people-outline" size={20} color={colors.light.primary} />
+            <Ionicons name="chatbubbles-outline" size={20} color={colors.light.primary} />
             <Text style={styles.statValue}>{stats.communitiesJoined}</Text>
-            <Text style={styles.statLabel}>Сообщества</Text>
+            <Text style={styles.statLabel}>Обсуждения</Text>
           </View>
         </View>
 

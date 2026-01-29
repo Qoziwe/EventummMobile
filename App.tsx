@@ -11,7 +11,7 @@ import ProfileScreen from './screens/ProfileScreen';
 import OrganizerProfileScreen from './screens/OrganizerProfileScreen';
 import EditProfileScreen from './screens/EditProfileScreen';
 import CreateEventScreen from './screens/CreateEventScreen';
-import CommunitiesScreen from './screens/CommunitiesScreen';
+import CommunitiesScreen from './screens/DiscussionsScreen.tsx';
 import SearchScreen from './screens/SearchScreen';
 import SettingsScreen from './screens/SettingsScreen';
 import PostThreadScreen from './screens/PostThreadScreen';
@@ -23,6 +23,7 @@ import FollowedOrganizersScreen from './screens/FollowedOrganizersScreen';
 import EditStudioScreen from './screens/EditStudioScreen';
 import AnalyticsScreen from './screens/AnalyticsScreen';
 import FinanceScreen from './screens/FinanceScreen';
+import CreateDiscussionScreen from './screens/CreateDiscussionScreen';
 
 // Combined Toast System
 import { ToastProvider } from './components/ToastProvider';
@@ -140,6 +141,10 @@ export default function App() {
                 />
                 <Stack.Screen name="CreateEvent" component={CreateEventScreen} />
                 <Stack.Screen name="PostThread" component={PostThreadScreen} />
+                <Stack.Screen
+                  name="CreateDiscussion"
+                  component={CreateDiscussionScreen}
+                />
               </>
             )}
           </Stack.Navigator>
