@@ -1,4 +1,4 @@
-import React, { useState, useLayoutEffect, useMemo, useEffect } from 'react';
+import React, { useState, useLayoutEffect, useMemo, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,27 +7,47 @@ import {
   ScrollView,
   StatusBar,
   Keyboard,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, borderRadius, typography } from '../theme/colors';
 
 import HeroSection from '../components/HeroSection';
 import EventCard from '../components/EventCard';
 import { useEventStore } from '../store/eventStore';
+import { useUserStore } from '../store/userStore';
+import { calculateUserAge } from '../utils/dateUtils';
 
 export default function SearchScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
-  const { events } = useEventStore();
+  const { events, fetchEvents } = useEventStore();
+  const { user } = useUserStore();
 
   const [searchValue, setSearchValue] = useState('');
   const [currentFilters, setCurrentFilters] = useState<Record<string, string>>({});
+  const [refreshing, setRefreshing] = useState(false);
+
+  const userAge = useMemo(() => calculateUserAge(user.birthDate), [user.birthDate]);
+
+  // Авто-обновление при фокусе на экран
+  useFocusEffect(
+    useCallback(() => {
+      fetchEvents();
+    }, [])
+  );
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchEvents();
+    setRefreshing(false);
+  }, [fetchEvents]);
 
   useEffect(() => {
     if (route.params?.incomingFilters) {
-      setCurrentFilters(route.params.incomingFilters);
+      setCurrentFilters(prev => ({ ...prev, ...route.params.incomingFilters }));
       navigation.setParams({ incomingFilters: undefined });
     }
   }, [route.params?.incomingFilters]);
@@ -39,7 +59,7 @@ export default function SearchScreen() {
   }, [navigation]);
 
   const filteredEvents = useMemo(() => {
-    let result = events;
+    let result = events.filter(e => userAge >= (e.ageLimit || 0));
 
     if (isSearching) {
       result = result.filter(event => {
@@ -80,20 +100,18 @@ export default function SearchScreen() {
           if (key === 'district' && event.district !== value) return false;
           if (key === 'vibe' && event.vibe !== value) return false;
           if (key === 'age' && event.ageLimit < parseInt(value)) return false;
-          if (
-            key === 'category' &&
-            !event.categories?.some(c => c.toLowerCase().includes(value.toLowerCase()))
-          )
-            return false;
+          if (key === 'category') {
+            const hasCat = event.categories?.some(
+              c => c.toLowerCase() === value.toLowerCase()
+            );
+            if (!hasCat) return false;
+          }
           if (key === 'price') {
-            if (value === 'free' && event.priceValue !== 0) return false;
-            if (value === 'low' && (event.priceValue || 0) > 5000) return false;
-            if (
-              value === 'medium' &&
-              ((event.priceValue || 0) < 5000 || (event.priceValue || 0) > 15000)
-            )
-              return false;
-            if (value === 'high' && (event.priceValue || 0) < 15000) return false;
+            const p = event.priceValue || 0;
+            if (value === 'free' && p !== 0) return false;
+            if (value === 'low' && p > 5000) return false;
+            if (value === 'medium' && (p < 5000 || p > 15000)) return false;
+            if (value === 'high' && p < 15000) return false;
           }
         }
         return true;
@@ -104,9 +122,9 @@ export default function SearchScreen() {
     return [...result].sort((a, b) => {
       if (sortMode === 'popular') return (b.stats || 0) - (a.stats || 0);
       if (sortMode === 'soon') return (a.timestamp || 0) - (b.timestamp || 0);
-      return b.timestamp - a.timestamp;
+      return (b.timestamp || 0) - (a.timestamp || 0);
     });
-  }, [events, searchValue, currentFilters, isSearching]);
+  }, [events, searchValue, currentFilters, isSearching, userAge]);
 
   return (
     <SafeAreaView style={styles.fullContainer} edges={['top']}>
@@ -119,7 +137,18 @@ export default function SearchScreen() {
         <View style={{ width: 40 }} />
       </View>
 
-      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.container}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[colors.light.primary]}
+            tintColor={colors.light.primary}
+          />
+        }
+      >
         <HeroSection
           searchValue={searchValue}
           onSearchChange={setSearchValue}
@@ -148,7 +177,6 @@ export default function SearchScreen() {
               </TouchableOpacity>
             )}
           </View>
-
           {filteredEvents.map(event => (
             <EventCard
               key={event.id}
@@ -157,12 +185,10 @@ export default function SearchScreen() {
               onPress={() => navigation.navigate('EventDetail', { ...event })}
             />
           ))}
-
           {isSearching && filteredEvents.length === 0 && (
             <View style={styles.empty}>
               <Ionicons name="search-outline" size={64} color={colors.light.border} />
               <Text style={styles.emptyTxt}>Ничего не нашли...</Text>
-              <Text style={styles.emptySubTxt}>Попробуйте изменить параметры поиска</Text>
             </View>
           )}
         </View>
@@ -189,10 +215,7 @@ const styles = StyleSheet.create({
     color: colors.light.foreground,
   },
   container: { flex: 1 },
-  resultsWrapper: {
-    paddingHorizontal: spacing.lg,
-    paddingBottom: 40,
-  },
+  resultsWrapper: { paddingHorizontal: spacing.lg, paddingBottom: 40 },
   resHead: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -211,10 +234,5 @@ const styles = StyleSheet.create({
     color: colors.light.foreground,
     fontSize: typography.lg,
     fontWeight: '600',
-  },
-  emptySubTxt: {
-    color: colors.light.mutedForeground,
-    fontSize: typography.sm,
-    textAlign: 'center',
   },
 });

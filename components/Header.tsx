@@ -9,6 +9,7 @@ import {
   Modal,
   FlatList,
   TouchableWithoutFeedback,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -64,7 +65,6 @@ export default function Header({
     if (onProfilePress) {
       onProfilePress();
     } else {
-      // Переход на таб профиля
       navigation.navigate('Profile');
     }
   };
@@ -149,7 +149,11 @@ export default function Header({
 
             <TouchableOpacity style={styles.avatarButton} onPress={handleAvatarPress}>
               <View style={styles.avatar}>
-                <Text style={styles.avatarText}>{user.avatarInitials}</Text>
+                {user.avatarUrl ? (
+                  <Image source={{ uri: user.avatarUrl }} style={styles.avatarImage} />
+                ) : (
+                  <Text style={styles.avatarText}>{user.avatarInitials}</Text>
+                )}
               </View>
             </TouchableOpacity>
           </View>
@@ -245,7 +249,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.light.accent,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
+  avatarImage: { width: '100%', height: '100%' },
   avatarText: {
     fontSize: typography.xs,
     fontWeight: '600',

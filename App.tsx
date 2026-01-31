@@ -1,4 +1,5 @@
-import { NavigationContainer, CommonActions } from '@react-navigation/native';
+import React, { useEffect } from 'react';
+import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -12,6 +13,7 @@ import OrganizerProfileScreen from './screens/OrganizerProfileScreen';
 import EditProfileScreen from './screens/EditProfileScreen';
 import CreateEventScreen from './screens/CreateEventScreen';
 import CommunitiesScreen from './screens/DiscussionsScreen.tsx';
+import MyDiscussionsScreen from './screens/MyDiscussionsScreen'; // ИМПОРТ НОВОГО ЭКРАНА
 import SearchScreen from './screens/SearchScreen';
 import SettingsScreen from './screens/SettingsScreen';
 import PostThreadScreen from './screens/PostThreadScreen';
@@ -28,8 +30,10 @@ import CreateDiscussionScreen from './screens/CreateDiscussionScreen';
 // Combined Toast System
 import { ToastProvider } from './components/ToastProvider';
 
-// Stores
+// Stores - ПУТИ ИСПРАВЛЕНЫ ПОД СТАНДАРТНЫЕ НАЗВАНИЯ ФАЙЛОВ
 import { useUserStore } from './store/userStore';
+import { useEventStore } from './store/eventStore';
+import { useDiscussionStore } from './store/discussionStore';
 
 // Icons component
 import { Ionicons } from '@expo/vector-icons';
@@ -83,9 +87,6 @@ function TabNavigator() {
         options={{ title: 'Профиль' }}
         listeners={({ navigation }) => ({
           tabPress: e => {
-            // Исправлено: Вместо RESET, который не находит ProfileMain в TabNavigator,
-            // используем navigate с указанием вложенного экрана.
-            // Это корректно возвращает пользователя на главную страницу профиля.
             navigation.navigate('Profile', { screen: 'ProfileMain' });
           },
         })}
@@ -101,12 +102,12 @@ function ProfileStackScreen() {
       <Stack.Screen name="EditProfile" component={EditProfileScreen} />
       <Stack.Screen name="Settings" component={SettingsScreen} />
       <Stack.Screen name="Subscriptions" component={SubscriptionsScreen} />
-      <Stack.Screen name="TicketDetail" component={TicketDetailScreen} />
       <Stack.Screen name="FollowedOrganizers" component={FollowedOrganizersScreen} />
       <Stack.Screen name="SavedEvents" component={SavedEventsScreen} />
       <Stack.Screen name="EditStudio" component={EditStudioScreen} />
       <Stack.Screen name="Analytics" component={AnalyticsScreen} />
       <Stack.Screen name="Finance" component={FinanceScreen} />
+      <Stack.Screen name="MyDiscussions" component={MyDiscussionsScreen} />
     </Stack.Navigator>
   );
 }
@@ -121,6 +122,24 @@ function ProfileScreenWrapper() {
 
 export default function App() {
   const { isAuthenticated } = useUserStore();
+  const fetchEvents = useEventStore(state => state.fetchEvents);
+  const fetchPosts = useDiscussionStore(state => state.fetchPosts);
+  const fetchMyTickets = useUserStore(state => state.fetchMyTickets);
+
+  // Логика первичной загрузки данных из бэкенда Flask
+  useEffect(() => {
+    if (isAuthenticated) {
+      // Оборачиваем в try-catch на случай если бэкенд не запущен
+      const loadInitialData = async () => {
+        try {
+          await Promise.all([fetchEvents(), fetchPosts(), fetchMyTickets()]);
+        } catch (e) {
+          // initial load error
+        }
+      };
+      loadInitialData();
+    }
+  }, [isAuthenticated]);
 
   return (
     <SafeAreaProvider>
@@ -134,7 +153,7 @@ export default function App() {
               <>
                 <Stack.Screen name="MainTabs" component={TabNavigator} />
                 <Stack.Screen name="EventDetail" component={EventDetailScreen} />
-                {/* ЭКРАН ПЕРЕНЕСЕН В КОРЕНЬ: Теперь это глобальная страница автора */}
+                <Stack.Screen name="TicketDetail" component={TicketDetailScreen} />
                 <Stack.Screen
                   name="OrganizerProfile"
                   component={OrganizerProfileScreen}

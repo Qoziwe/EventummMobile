@@ -3,6 +3,7 @@ export interface PurchasedTicket {
   eventId: string;
   quantity: number;
   purchaseDate: string;
+  eventTitle?: string; // Добавлено поле из бэкенда
 }
 
 export interface UserStats {
@@ -33,7 +34,7 @@ export interface UserData {
   savedEventIds: string[];
   purchasedTickets: PurchasedTicket[];
   followingOrganizerIds: string[];
-  birthDate: string; // Новое поле: ISO дата рождения (ГГГГ-ММ-ДД)
+  birthDate: string; // ISO дата рождения (ГГГГ-ММ-ДД)
 }
 
 export const ALL_INTERESTS = [
@@ -72,11 +73,11 @@ export const INITIAL_USER_DATA: UserData = {
   username: '',
   email: '',
   phone: '',
-  location: '',
+  location: 'Алматы',
   bio: '',
   avatarInitials: '',
   avatarUrl: null,
-  role: 'Пользователь',
+  role: 'Исследователь',
   userType: 'explorer',
   subscriptionType: 'None',
   subscriptionStatus: 'none',
@@ -89,5 +90,5 @@ export const INITIAL_USER_DATA: UserData = {
   savedEventIds: [],
   purchasedTickets: [],
   followingOrganizerIds: [],
-  birthDate: '2000-01-01', // Значение по умолчанию (взрослый), пока нет экрана ввода
+  birthDate: '2000-01-01',
 };

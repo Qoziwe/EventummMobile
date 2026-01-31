@@ -13,14 +13,19 @@ import {
   FlatList,
   Animated,
   Dimensions,
+  Image,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import * as ImagePicker from 'expo-image-picker';
 import { colors, spacing, borderRadius, typography } from '../theme/colors';
 import { useUserStore } from '../store/userStore';
 import { useToast } from '../components/ToastProvider';
 import { ALL_INTERESTS } from '../data/userMockData';
+import { validatePhone, formatPhone, sanitizeText } from '../utils/security';
+import { validateBirthDate } from '../utils/dateUtils';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -52,8 +57,10 @@ const YEARS = Array.from({ length: 80 }, (_, i) => {
 
 export default function EditProfileScreen() {
   const navigation = useNavigation();
-  const { user, updateProfile } = useUserStore();
+  const { user, updateProfile, uploadAvatar, clearAllData, logout } = useUserStore();
   const { showToast } = useToast();
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
   const [formData, setFormData] = useState({
     name: user.name,
@@ -76,6 +83,27 @@ export default function EditProfileScreen() {
     user.birthDate ? user.birthDate.split('-')[0] : '2000'
   );
   const dateModalAnim = useRef(new Animated.Value(0)).current;
+
+  const pickImage = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.7,
+    });
+
+    if (!result.canceled) {
+      try {
+        setIsUploading(true);
+        await uploadAvatar(result.assets[0].uri);
+        showToast({ message: 'Фото обновлено', type: 'success' });
+      } catch (error: any) {
+        showToast({ message: 'Не удалось загрузить фото', type: 'error' });
+      } finally {
+        setIsUploading(false);
+      }
+    }
+  };
 
   const openDatePicker = () => {
     setShowDatePicker(true);
@@ -108,14 +136,110 @@ export default function EditProfileScreen() {
     return `${parseInt(d)} ${monthLabel} ${y}`;
   };
 
-  const handleSave = () => {
-    if (!formData.name.trim()) {
-      showToast({ message: 'Имя не может быть пустым', type: 'error' });
+  const handlePhoneChange = (text: string) => {
+    let cleaned = text.replace(/\D/g, '');
+
+    if (cleaned.length === 0) {
+      setFormData({ ...formData, phone: '' });
       return;
     }
-    updateProfile(formData);
-    showToast({ message: 'Профиль успешно обновлен', type: 'success' });
-    navigation.goBack();
+
+    if (cleaned.startsWith('8') || cleaned.startsWith('7')) {
+      cleaned = cleaned.substring(1);
+    }
+
+    cleaned = cleaned.substring(0, 10);
+
+    let formatted = '+7';
+    if (cleaned.length > 0) {
+      formatted += ' (' + cleaned.substring(0, 3);
+    }
+    if (cleaned.length >= 4) {
+      formatted += ') ' + cleaned.substring(3, 6);
+    }
+    if (cleaned.length >= 7) {
+      formatted += '-' + cleaned.substring(6, 8);
+    }
+    if (cleaned.length >= 9) {
+      formatted += '-' + cleaned.substring(8, 10);
+    }
+
+    setFormData({ ...formData, phone: formatted });
+  };
+
+  const handleSave = async () => {
+    if (!formData.name.trim() || formData.name.trim().length < 2) {
+      showToast({ message: 'Имя должно содержать минимум 2 символа', type: 'error' });
+      return;
+    }
+
+    const usernameTrimmed = formData.username.trim().toLowerCase();
+    if (!usernameTrimmed || usernameTrimmed.length < 3) {
+      showToast({
+        message: 'Имя пользователя должно быть не менее 3 символов',
+        type: 'error',
+      });
+      return;
+    }
+    if (/\s/.test(usernameTrimmed)) {
+      showToast({
+        message: 'Имя пользователя не может содержать пробелы',
+        type: 'error',
+      });
+      return;
+    }
+
+    if (formData.birthDate) {
+      const birthDateValidation = validateBirthDate(formData.birthDate);
+      if (!birthDateValidation.valid) {
+        showToast({
+          message: birthDateValidation.message || 'Некорректная дата рождения',
+          type: 'error',
+        });
+        return;
+      }
+    }
+
+    if (formData.phone && formData.phone.trim().length > 0) {
+      if (!validatePhone(formData.phone)) {
+        showToast({ message: 'Некорректный формат телефона', type: 'error' });
+        return;
+      }
+    }
+
+    try {
+      const sanitizedData = {
+        ...formData,
+        name: sanitizeText(formData.name.trim()),
+        username: usernameTrimmed,
+        bio: sanitizeText(formData.bio || ''),
+        phone: formData.phone ? formatPhone(formData.phone) : formData.phone,
+        location: sanitizeText(formData.location || ''),
+      };
+
+      await updateProfile(sanitizedData);
+      showToast({ message: 'Профиль успешно обновлен', type: 'success' });
+      navigation.goBack();
+    } catch (error: any) {
+      showToast({
+        message: error.message || 'Ошибка при обновлении профиля',
+        type: 'error',
+      });
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    try {
+      await clearAllData();
+      logout();
+      showToast({ message: 'Аккаунт удален', type: 'success' });
+    } catch (error: any) {
+      showToast({
+        message: error.message || 'Ошибка при удалении аккаунта',
+        type: 'error',
+      });
+    }
+    setShowDeleteConfirm(false);
   };
 
   const toggleInterest = (interest: string) => {
@@ -273,13 +397,25 @@ export default function EditProfileScreen() {
         >
           <View style={styles.avatarSection}>
             <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{user.avatarInitials}</Text>
-              <TouchableOpacity style={styles.changePhotoButton}>
-                <Ionicons
-                  name="camera"
-                  size={18}
-                  color={colors.light.primaryForeground}
-                />
+              {user.avatarUrl ? (
+                <Image source={{ uri: user.avatarUrl }} style={styles.avatarImage} />
+              ) : (
+                <Text style={styles.avatarText}>{user.avatarInitials}</Text>
+              )}
+              <TouchableOpacity
+                style={styles.changePhotoButton}
+                onPress={pickImage}
+                disabled={isUploading}
+              >
+                {isUploading ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Ionicons
+                    name="camera"
+                    size={18}
+                    color={colors.light.primaryForeground}
+                  />
+                )}
               </TouchableOpacity>
             </View>
             <Text style={styles.changePhotoLabel}>Изменить фото</Text>
@@ -333,13 +469,25 @@ export default function EditProfileScreen() {
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Телефон</Text>
               <TextInput
-                style={styles.input}
+                style={[
+                  styles.input,
+                  formData.phone &&
+                    formData.phone.length > 0 &&
+                    !validatePhone(formData.phone) &&
+                    styles.inputError,
+                ]}
                 value={formData.phone}
-                onChangeText={text => setFormData({ ...formData, phone: text })}
+                onChangeText={handlePhoneChange}
                 placeholder="+7 (___) ___-__-__"
                 keyboardType="phone-pad"
+                maxLength={18}
                 placeholderTextColor={colors.light.mutedForeground}
               />
+              {formData.phone &&
+                formData.phone.length > 0 &&
+                !validatePhone(formData.phone) && (
+                  <Text style={styles.errorText}>Некорректный формат телефона</Text>
+                )}
             </View>
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Город</Text>
@@ -378,7 +526,7 @@ export default function EditProfileScreen() {
           </View>
           <TouchableOpacity
             style={styles.deleteAccountButton}
-            onPress={() => console.log('Delete account')}
+            onPress={() => setShowDeleteConfirm(true)}
           >
             <Text style={styles.deleteAccountText}>Удалить аккаунт</Text>
           </TouchableOpacity>
@@ -386,6 +534,36 @@ export default function EditProfileScreen() {
         </ScrollView>
       </KeyboardAvoidingView>
       {renderDatePicker()}
+
+      <Modal
+        visible={showDeleteConfirm}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowDeleteConfirm(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.deleteModalContent}>
+            <Text style={styles.deleteModalTitle}>Удалить аккаунт?</Text>
+            <Text style={styles.deleteModalText}>
+              Это действие нельзя отменить. Все ваши данные будут удалены безвозвратно.
+            </Text>
+            <View style={styles.deleteModalButtons}>
+              <TouchableOpacity
+                style={[styles.deleteModalButton, styles.deleteModalButtonCancel]}
+                onPress={() => setShowDeleteConfirm(false)}
+              >
+                <Text style={styles.deleteModalButtonCancelText}>Отмена</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.deleteModalButton, styles.deleteModalButtonConfirm]}
+                onPress={handleDeleteAccount}
+              >
+                <Text style={styles.deleteModalButtonConfirmText}>Удалить</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -425,7 +603,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
+    overflow: 'hidden',
   },
+  avatarImage: { width: '100%', height: '100%', borderRadius: borderRadius.full },
   avatarText: {
     fontSize: typography['3xl'],
     fontWeight: '600',
@@ -555,4 +735,66 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
   },
   confirmButtonText: { color: '#fff', fontSize: typography.base, fontWeight: '800' },
+  inputError: {
+    borderColor: '#EF4444',
+    borderWidth: 2,
+  },
+  errorText: {
+    color: '#EF4444',
+    fontSize: 12,
+    marginTop: 4,
+    marginLeft: 4,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.lg,
+  },
+  deleteModalContent: {
+    backgroundColor: colors.light.background,
+    borderRadius: borderRadius.xl,
+    padding: spacing.xl,
+    width: '100%',
+    maxWidth: 400,
+  },
+  deleteModalTitle: {
+    fontSize: typography.xl,
+    fontWeight: '800',
+    color: colors.light.foreground,
+    marginBottom: spacing.md,
+  },
+  deleteModalText: {
+    fontSize: typography.base,
+    color: colors.light.mutedForeground,
+    marginBottom: spacing.xl,
+    lineHeight: 22,
+  },
+  deleteModalButtons: {
+    flexDirection: 'row',
+    gap: spacing.md,
+  },
+  deleteModalButton: {
+    flex: 1,
+    padding: spacing.md,
+    borderRadius: borderRadius.lg,
+    alignItems: 'center',
+  },
+  deleteModalButtonCancel: {
+    backgroundColor: colors.light.secondary,
+    borderWidth: 1,
+    borderColor: colors.light.border,
+  },
+  deleteModalButtonCancelText: {
+    color: colors.light.foreground,
+    fontWeight: '700',
+  },
+  deleteModalButtonConfirm: {
+    backgroundColor: '#EF4444',
+  },
+  deleteModalButtonConfirmText: {
+    color: '#fff',
+    fontWeight: '700',
+  },
 });

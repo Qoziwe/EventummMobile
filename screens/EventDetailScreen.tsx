@@ -21,6 +21,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, borderRadius, typography } from '../theme/colors';
 import { useUserStore } from '../store/userStore';
 import { useToast } from '../components/ToastProvider';
+import { apiClient } from '../api/apiClient'; // ИМПОРТИРУЙТЕ apiClient
 
 const { width, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const PLACEHOLDER_IMAGE = 'https://via.placeholder.com/800x450?text=Event+Detail';
@@ -28,13 +29,15 @@ const PLACEHOLDER_IMAGE = 'https://via.placeholder.com/800x450?text=Event+Detail
 export default function EventDetailScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
-  const { toggleFavorite, isFavorite, buyTicket, isPurchased, user } = useUserStore();
+  const { toggleFavorite, isFavorite, buyTicket, isPurchased, user, isAuthenticated } =
+    useUserStore();
   const { showToast } = useToast();
 
   const [imageError, setImageError] = useState(false);
   const [quantity, setQuantity] = useState(1);
   const [showPayment, setShowPayment] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [views, setViews] = useState(0); // СОСТОЯНИЕ ДЛЯ ПРОСМОТРОВ
 
   const modalAnim = useRef(new Animated.Value(0)).current;
   const scrollY = useRef(new Animated.Value(0)).current;
@@ -43,23 +46,61 @@ export default function EventDetailScreen() {
   const [expiry, setExpiry] = useState('');
   const [cvv, setCvv] = useState('');
 
+  const params = route.params || {};
+
+  const formatEventDate = (ts: any) => {
+    if (!ts) return params.date || 'Скоро';
+    const d = new Date(ts);
+    return d.toLocaleString('ru-RU', {
+      day: 'numeric',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  // Функция для отправки просмотра
+  const sendView = async () => {
+    try {
+      const response = await apiClient(`events/${params.id}/view`, {
+        method: 'POST',
+      });
+
+      // Обновляем локальное состояние с количеством просмотров
+      if (response && response.views !== undefined) {
+        setViews(response.views);
+      }
+    } catch (error) {
+      // ignore send view errors
+    }
+  };
+
+  // Отправляем просмотр при открытии экрана
+  useEffect(() => {
+    if (params.id && params.id !== 'unknown') {
+      sendView();
+    }
+  }, [params.id]);
+
   const event = {
-    id: 'unknown',
-    title: 'Название события',
-    date: 'Скоро',
-    location: 'Место проведения',
-    price: '0₸',
-    priceValue: 0,
-    category: 'Событие',
-    fullDescription: 'Описание события скоро появится.',
-    organizerName: 'Организатор',
-    organizerAvatar: 'https://via.placeholder.com/100',
-    organizerId: '',
-    timeRange: 'Время не указано',
-    ageLimit: 0,
-    vibe: 'chill',
-    tags: [],
-    ...route.params,
+    id: params.id || 'unknown',
+    title: params.title || 'Название события',
+    date: formatEventDate(params.timestamp),
+    location: params.location || 'Место проведения',
+    priceValue: params.priceValue !== undefined ? params.priceValue : 0,
+    category: params.categories ? params.categories[0] : params.category || 'Событие',
+    fullDescription:
+      params.fullDescription || params.description || 'Описание события скоро появится.',
+    organizerName: params.organizerName || 'Организатор',
+    organizerAvatar: params.organizerAvatar || 'https://via.placeholder.com/100',
+    organizerId: params.organizerId || '',
+    timeRange: params.timeRange || 'Время не указано',
+    ageLimit: params.ageLimit || 0,
+    vibe: params.vibe || 'chill',
+    tags: params.tags || [],
+    image: params.image || '',
+    timestamp: params.timestamp,
+    views: views || params.views || 0, // ДОБАВЛЯЕМ ПРОСМОТРЫ
   };
 
   const isOrganizer = user.userType === 'organizer';
@@ -98,14 +139,20 @@ export default function EventDetailScreen() {
       return;
     }
     toggleFavorite(event.id);
-    const currentlyFav = isFavorite(event.id);
-    showToast({
-      message: currentlyFav ? 'Добавлено в избранное' : 'Удалено из избранного',
-      type: 'info',
-    });
   };
 
   const handleProcessPayment = () => {
+    if (!isAuthenticated || !user.id) {
+      showToast({ message: 'Войдите в аккаунт для покупки билетов', type: 'error' });
+      setShowPayment(false);
+      return;
+    }
+
+    if (!quantity || quantity <= 0 || quantity > 10) {
+      showToast({ message: 'Количество билетов должно быть от 1 до 10', type: 'error' });
+      return;
+    }
+
     if (
       event.priceValue > 0 &&
       (cardNumber.length < 16 || expiry.length < 4 || cvv.length < 3)
@@ -119,42 +166,46 @@ export default function EventDetailScreen() {
 
     setIsProcessing(true);
     setTimeout(() => {
-      buyTicket(event.id, quantity);
-      setIsProcessing(false);
-      Animated.timing(modalAnim, {
-        toValue: 0,
-        duration: 300,
-        useNativeDriver: true,
-      }).start(() => {
-        setShowPayment(false);
-        showToast({
-          message: 'Билет приобретен и доступен в вашем профиле.',
-          type: 'success',
+      try {
+        buyTicket(event.id, quantity);
+        setIsProcessing(false);
+        setCardNumber('');
+        setExpiry('');
+        setCvv('');
+        Animated.timing(modalAnim, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }).start(() => {
+          setShowPayment(false);
+          showToast({
+            message: 'Билет приобретен и доступен в вашем профиле.',
+            type: 'success',
+          });
+          setTimeout(() => {
+            navigation.navigate('MainTabs', { screen: 'Profile' });
+          }, 1500);
         });
-        setTimeout(() => {
-          navigation.navigate('MainTabs', { screen: 'Profile' });
-        }, 1500);
-      });
+      } catch (error: any) {
+        setIsProcessing(false);
+        showToast({
+          message: error.message || 'Ошибка при покупке билета',
+          type: 'error',
+        });
+      }
     }, 2000);
   };
 
   const imageSource =
-    imageError || !event.image || event.image === ''
-      ? { uri: PLACEHOLDER_IMAGE }
-      : typeof event.image === 'string'
-        ? { uri: event.image }
-        : event.image || { uri: PLACEHOLDER_IMAGE };
-
+    imageError || !event.image ? { uri: PLACEHOLDER_IMAGE } : { uri: event.image };
   const backdropOpacity = modalAnim.interpolate({
     inputRange: [0, 1],
     outputRange: [0, 1],
   });
-
   const cardTranslateY = modalAnim.interpolate({
     inputRange: [0, 1],
     outputRange: [SCREEN_HEIGHT * 0.8, 0],
   });
-
   const headerOpacity = scrollY.interpolate({
     inputRange: [0, 200],
     outputRange: [0, 1],
@@ -211,7 +262,7 @@ export default function EventDetailScreen() {
               style={[styles.badge, { backgroundColor: colors.light.primary + '15' }]}
             >
               <Text style={[styles.badgeText, { color: colors.light.primary }]}>
-                {event.category || 'Событие'}
+                {event.category}
               </Text>
             </View>
             <View style={[styles.badge, { backgroundColor: colors.light.accent + '15' }]}>
@@ -224,23 +275,27 @@ export default function EventDetailScreen() {
                 <Text style={styles.badgeText}>{event.ageLimit}+</Text>
               </View>
             )}
+            {/* БЕЙДЖ ПРОСМОТРОВ */}
+            <View style={[styles.badge, styles.viewsBadge]}>
+              <Ionicons
+                name="eye-outline"
+                size={14}
+                color={colors.light.mutedForeground}
+              />
+              <Text style={styles.viewsBadgeText}>{event.views}</Text>
+            </View>
           </View>
 
           <Text style={styles.eventTitle}>{event.title}</Text>
 
           <TouchableOpacity
             style={styles.organizerCard}
-            onPress={() => {
-              // ИСПРАВЛЕННЫЙ ПУТЬ: Теперь переход идет напрямую на глобальный экран OrganizerProfile
-              navigation.navigate('OrganizerProfile', {
-                organizerId: event.organizerId,
-                organizerName: event.organizerName,
-                organizerAvatar: event.organizerAvatar,
-              });
-            }}
+            onPress={() =>
+              navigation.navigate('OrganizerProfile', { organizerId: event.organizerId })
+            }
           >
             <Image
-              source={{ uri: event.organizerAvatar || 'https://via.placeholder.com/100' }}
+              source={{ uri: event.organizerAvatar }}
               style={styles.organizerAvatar}
             />
             <View style={styles.organizerInfo}>
@@ -273,19 +328,6 @@ export default function EventDetailScreen() {
             <Text style={styles.sectionTitle}>Описание</Text>
             <Text style={styles.descriptionText}>{event.fullDescription}</Text>
           </View>
-
-          {event.tags && event.tags.length > 0 && (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Метки</Text>
-              <View style={styles.tagsContainer}>
-                {event.tags.map((tag: string, index: number) => (
-                  <View key={index} style={styles.tag}>
-                    <Text style={styles.tagText}>#{tag}</Text>
-                  </View>
-                ))}
-              </View>
-            </View>
-          )}
         </View>
       </Animated.ScrollView>
 
@@ -305,15 +347,6 @@ export default function EventDetailScreen() {
             />
             <Text style={styles.buyButtonText}>Редактировать</Text>
           </TouchableOpacity>
-        ) : isOrganizer ? (
-          <View style={styles.organizerNotice}>
-            <Ionicons
-              name="information-circle-outline"
-              size={20}
-              color={colors.light.mutedForeground}
-            />
-            <Text style={styles.organizerNoticeText}>Режим организатора</Text>
-          </View>
         ) : alreadyBought ? (
           <TouchableOpacity
             style={[styles.buyButton, { flex: 1 }]}
@@ -347,17 +380,22 @@ export default function EventDetailScreen() {
                   </TouchableOpacity>
                   <Text style={styles.qText}>{quantity}</Text>
                   <TouchableOpacity
-                    onPress={() => setQuantity(q => q + 1)}
+                    onPress={() => quantity < 10 && setQuantity(q => q + 1)}
                     style={styles.qBtn}
                   >
                     <Ionicons name="add" size={18} color={colors.light.foreground} />
                   </TouchableOpacity>
                 </View>
               )}
-
               <TouchableOpacity
                 style={styles.buyButton}
-                onPress={() => setShowPayment(true)}
+                onPress={() => {
+                  if (!isAuthenticated) {
+                    showToast({ message: 'Войдите в аккаунт', type: 'error' });
+                    return;
+                  }
+                  setShowPayment(true);
+                }}
               >
                 <Text style={styles.buyButtonText}>
                   {event.priceValue === 0 ? 'Участвовать' : 'Купить'}
@@ -382,7 +420,6 @@ export default function EventDetailScreen() {
               onPress={closePaymentModal}
             />
           </Animated.View>
-
           <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             style={styles.keyboardView}
@@ -396,10 +433,9 @@ export default function EventDetailScreen() {
               <View style={styles.paymentHeader}>
                 <Text style={styles.paymentTitle}>Оформление</Text>
                 <TouchableOpacity onPress={closePaymentModal}>
-                  <Ionicons name="close" size={28} color={colors.light.foreground} />
+                  <Ionicons name="close" size={28} />
                 </TouchableOpacity>
               </View>
-
               <ScrollView showsVerticalScrollIndicator={false}>
                 <View style={styles.paymentSummary}>
                   <Text style={styles.summaryText}>{event.title}</Text>
@@ -407,7 +443,6 @@ export default function EventDetailScreen() {
                     {quantity} шт. — {(event.priceValue * quantity).toLocaleString()} ₸
                   </Text>
                 </View>
-
                 {event.priceValue > 0 && (
                   <View style={styles.cardInputContainer}>
                     <Text style={styles.inputLabel}>Номер карты</Text>
@@ -446,7 +481,6 @@ export default function EventDetailScreen() {
                     </View>
                   </View>
                 )}
-
                 <TouchableOpacity
                   style={[styles.payConfirmBtn, isProcessing && { opacity: 0.7 }]}
                   onPress={handleProcessPayment}
@@ -499,11 +533,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 60,
   },
-  stickyHeaderTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.light.foreground,
-  },
+  stickyHeaderTitle: { fontSize: 16, fontWeight: '700', color: colors.light.foreground },
   headerActions: {
     position: 'absolute',
     top: 0,
@@ -523,18 +553,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
   },
   scrollContent: { paddingBottom: 140 },
   imageWrapper: { width: width, height: 380, position: 'relative' },
   eventImage: { width: '100%', height: '100%', resizeMode: 'cover' },
-  imageOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.15)',
-  },
+  imageOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.15)' },
   mainContent: {
     marginTop: -30,
     backgroundColor: colors.light.background,
@@ -542,22 +565,19 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 30,
     padding: spacing.lg,
   },
-  badgeRow: {
+  badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: spacing.md },
+  badge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
+  badgeText: { fontSize: 12, fontWeight: '700', textTransform: 'uppercase' },
+  viewsBadge: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: spacing.md,
-  },
-  badge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
+    alignItems: 'center',
+    gap: 4,
     backgroundColor: colors.light.secondary,
   },
-  badgeText: {
+  viewsBadgeText: {
     fontSize: 12,
-    fontWeight: '700',
-    textTransform: 'uppercase',
+    fontWeight: '600',
+    color: colors.light.mutedForeground,
   },
   eventTitle: {
     fontSize: 28,
@@ -576,12 +596,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.light.border,
   },
-  organizerAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    marginRight: 12,
-  },
+  organizerAvatar: { width: 48, height: 48, borderRadius: 24, marginRight: 12 },
   organizerInfo: { flex: 1 },
   organizerLabel: { fontSize: 11, color: colors.light.mutedForeground, marginBottom: 2 },
   organizerName: { fontSize: 15, fontWeight: '700', color: colors.light.foreground },
@@ -636,19 +651,7 @@ const styles = StyleSheet.create({
     color: colors.light.foreground,
     marginBottom: spacing.sm,
   },
-  descriptionText: {
-    fontSize: 15,
-    color: colors.light.mutedForeground,
-    lineHeight: 24,
-  },
-  tagsContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  tag: {
-    backgroundColor: colors.light.secondary,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
-  tagText: { fontSize: 13, color: colors.light.foreground, fontWeight: '600' },
+  descriptionText: { fontSize: 15, color: colors.light.mutedForeground, lineHeight: 24 },
   bottomBar: {
     position: 'absolute',
     bottom: 0,
@@ -691,18 +694,6 @@ const styles = StyleSheet.create({
     color: colors.light.primaryForeground,
     fontWeight: '700',
     fontSize: 16,
-  },
-  organizerNotice: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    justifyContent: 'center',
-  },
-  organizerNoticeText: {
-    fontSize: 14,
-    color: colors.light.mutedForeground,
-    fontWeight: '700',
   },
   modalRoot: { flex: 1, justifyContent: 'flex-end' },
   backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.6)' },
@@ -757,11 +748,6 @@ const styles = StyleSheet.create({
     padding: 20,
     borderRadius: 18,
     alignItems: 'center',
-    shadowColor: colors.light.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 5,
   },
   payConfirmBtnText: { color: '#fff', fontWeight: '800', fontSize: 18 },
 });

@@ -11,15 +11,22 @@ import {
   Platform,
   Modal,
   FlatList,
+  Image,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import * as ImagePicker from 'expo-image-picker';
 import { colors, spacing, borderRadius, typography } from '../theme/colors';
 import { useEventStore } from '../store/eventStore';
 import { useUserStore } from '../store/userStore';
 import { useToast } from '../components/ToastProvider';
 import { ALL_INTERESTS } from '../data/userMockData';
+import { sanitizeText } from '../utils/security';
+import { validateEventDate } from '../utils/dateUtils';
+import { apiClient } from '../api/apiClient';
 
 const DAYS = Array.from({ length: 31 }, (_, i) => ({
   id: `d${i + 1}`,
@@ -69,19 +76,17 @@ const DISTRICTS = [
   'Алатауский',
 ];
 
-const NO_IMAGE_URL =
-  'https://images.unsplash.com/photo-1590608897129-79da98d15969?q=80&w=1200&auto=format&fit=crop';
-
 export default function CreateEventScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
-  const { addEvent, updateEvent } = useEventStore();
+  const { addEvent, updateEvent, deleteEvent } = useEventStore();
   const { user } = useUserStore();
   const { showToast } = useToast();
 
   const editEvent = route.params?.event;
 
   const [step, setStep] = useState(1);
+  const [isUploading, setIsUploading] = useState(false);
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -108,16 +113,31 @@ export default function CreateEventScreen() {
 
   useEffect(() => {
     if (editEvent) {
-      setTitle(editEvent.title);
-      setDescription(editEvent.fullDescription);
-      const cleanLocation = editEvent.location.split(', ')[0];
-      setLocation(cleanLocation);
-      setDistrict(editEvent.district);
-      setPrice(editEvent.priceValue.toString());
-      setCategory(editEvent.categories?.[0] || ALL_INTERESTS[0]);
-      setVibe(editEvent.vibe);
-      setAgeLimit(editEvent.ageLimit.toString());
-      setImageUrl(editEvent.image);
+      setTitle(editEvent.title || '');
+      setDescription(editEvent.fullDescription || '');
+
+      if (editEvent.location) {
+        const parts = editEvent.location.split(', ');
+        setLocation(parts[0] || '');
+        const districtToSet =
+          editEvent.district || (parts.length > 1 ? parts[parts.length - 1] : '');
+        const foundDistrict = DISTRICTS.find(d => d.trim() === districtToSet.trim());
+        if (foundDistrict) {
+          setDistrict(foundDistrict);
+        }
+      }
+
+      setPrice(editEvent.priceValue?.toString() || '0');
+
+      if (editEvent.categories && editEvent.categories.length > 0) {
+        const eventCat = editEvent.categories[0].toLowerCase();
+        const foundCat = ALL_INTERESTS.find(c => c.toLowerCase() === eventCat);
+        if (foundCat) setCategory(foundCat);
+      }
+
+      setVibe(editEvent.vibe || 'chill');
+      setAgeLimit(editEvent.ageLimit?.toString() || '18');
+      setImageUrl(editEvent.image || '');
 
       const dateObj = new Date(editEvent.timestamp);
       if (!isNaN(dateObj.getTime())) {
@@ -129,6 +149,45 @@ export default function CreateEventScreen() {
       }
     }
   }, [editEvent]);
+
+  const pickImage = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [16, 9],
+      quality: 0.8,
+    });
+
+    if (!result.canceled) {
+      const uri = result.assets[0].uri;
+      const formData = new FormData();
+      const filename = uri.split('/').pop() || 'event_image.jpg';
+      const match = /\.(\w+)$/.exec(filename);
+      const type = match ? `image/${match[1]}` : `image`;
+
+      formData.append('image', {
+        uri: Platform.OS === 'android' ? uri : uri.replace('file://', ''),
+        name: filename,
+        type,
+      } as any);
+
+      try {
+        setIsUploading(true);
+        const res = await apiClient('events/upload-image', {
+          method: 'POST',
+          body: formData,
+        });
+        if (res.imageUrl) {
+          setImageUrl(res.imageUrl);
+          showToast({ message: 'Изображение загружено', type: 'success' });
+        }
+      } catch (error) {
+        showToast({ message: 'Ошибка при загрузке изображения', type: 'error' });
+      } finally {
+        setIsUploading(false);
+      }
+    }
+  };
 
   const handleNext = () => {
     if (step === 1 && (!title || !description)) {
@@ -147,8 +206,69 @@ export default function CreateEventScreen() {
     else navigation.goBack();
   };
 
-  const handleFinish = () => {
-    const finalImage = imageUrl.trim().length > 10 ? imageUrl : NO_IMAGE_URL;
+  const handleDelete = () => {
+    Alert.alert(
+      'Удалить событие?',
+      'Вы уверены, что хотите безвозвратно удалить это мероприятие?',
+      [
+        {
+          text: 'Отмена',
+          style: 'cancel',
+        },
+        {
+          text: 'Удалить',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              if (editEvent && editEvent.id) {
+                await deleteEvent(editEvent.id);
+                showToast({ message: 'Мероприятие удалено', type: 'success' });
+                navigation.navigate('MainTabs', { screen: 'Profile' });
+              }
+            } catch (error) {
+              showToast({ message: 'Ошибка при удалении', type: 'error' });
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleFinish = async () => {
+    if (editEvent) {
+      if (!user.id || editEvent.organizerId !== user.id) {
+        showToast({
+          message: 'У вас нет прав на редактирование этого события',
+          type: 'error',
+        });
+        navigation.goBack();
+        return;
+      }
+    }
+
+    if (!editEvent && user.userType !== 'organizer') {
+      showToast({
+        message: 'Только организаторы могут создавать события',
+        type: 'error',
+      });
+      navigation.goBack();
+      return;
+    }
+
+    if (!imageUrl) {
+      showToast({ message: 'Загрузите обложку мероприятия', type: 'error' });
+      return;
+    }
+
+    const dateValidation = validateEventDate(selYear, selMonth, selDay);
+    if (!dateValidation.valid) {
+      showToast({
+        message: dateValidation.message || 'Некорректная дата',
+        type: 'error',
+      });
+      return;
+    }
+
     const monthLabel = MONTHS.find(m => m.value === selMonth)?.label;
     const dateString = `${selDay} ${monthLabel}, ${selYear}`;
     const timeRangeString = `${startH}:${startM} — ${endH}:${endM}`;
@@ -161,13 +281,22 @@ export default function CreateEventScreen() {
       parseInt(startM)
     );
 
+    if (isNaN(tsDate.getTime())) {
+      showToast({ message: 'Некорректная дата или время', type: 'error' });
+      return;
+    }
+
+    const sanitizedTitle = sanitizeText(title);
+    const sanitizedDescription = sanitizeText(description);
+    const sanitizedLocation = sanitizeText(location);
+
     const eventData = {
-      id: editEvent ? editEvent.id : `event_${Math.random().toString(36).substr(2, 9)}`,
-      organizerId: user.id,
-      title,
+      ...(editEvent ? { id: editEvent.id } : {}),
+      organizerId: user.id!,
+      title: sanitizedTitle,
       date: dateString,
       timestamp: tsDate.getTime(),
-      location: `${location}, ${district}`,
+      location: `${sanitizedLocation}, ${district}`,
       price: price === '0' || price === '' ? 'Бесплатно' : `${price}₸`,
       priceValue: parseInt(price) || 0,
       categories: [category.toLowerCase()],
@@ -176,21 +305,28 @@ export default function CreateEventScreen() {
       ageLimit: parseInt(ageLimit) || 0,
       tags: [category, vibe],
       stats: editEvent ? editEvent.stats : 0,
-      image: finalImage,
-      fullDescription: description,
-      organizerName: user.name || 'Организатор',
+      image: imageUrl,
+      fullDescription: sanitizedDescription,
+      organizerName: sanitizeText(user.name || 'Организатор'),
       organizerAvatar: user.avatarUrl || '',
       timeRange: timeRangeString,
     };
 
-    if (editEvent) {
-      updateEvent(eventData);
-      showToast({ message: 'Мероприятие обновлено', type: 'success' });
-      navigation.navigate('EventDetail', { ...eventData });
-    } else {
-      addEvent(eventData);
-      showToast({ message: 'Мероприятие опубликовано', type: 'success' });
-      navigation.navigate('MainTabs', { screen: 'Profile' });
+    try {
+      if (editEvent) {
+        await updateEvent(eventData as any);
+        showToast({ message: 'Мероприятие обновлено', type: 'success' });
+        navigation.navigate('EventDetail', { ...eventData });
+      } else {
+        await addEvent(eventData as any);
+        showToast({ message: 'Мероприятие опубликовано', type: 'success' });
+        navigation.navigate('MainTabs', { screen: 'Profile' });
+      }
+    } catch (error: any) {
+      showToast({
+        message: error.message || 'Ошибка при сохранении события',
+        type: 'error',
+      });
     }
   };
 
@@ -245,6 +381,42 @@ export default function CreateEventScreen() {
 
           {step === 1 && (
             <View style={styles.formSection}>
+              <Text style={styles.label}>Обложка мероприятия</Text>
+              <TouchableOpacity
+                style={[
+                  styles.imageUploadContainer,
+                  imageUrl ? styles.imageUploaded : null,
+                ]}
+                onPress={pickImage}
+                disabled={isUploading}
+              >
+                {isUploading ? (
+                  <ActivityIndicator color={colors.light.primary} size="large" />
+                ) : imageUrl ? (
+                  <>
+                    <Image source={{ uri: imageUrl }} style={styles.previewImage} />
+                    <View style={styles.changeImageBadge}>
+                      <Ionicons name="camera" size={16} color="#fff" />
+                      <Text style={styles.changeImageText}>Сменить фото</Text>
+                    </View>
+                  </>
+                ) : (
+                  <View style={styles.placeholderContainer}>
+                    <Ionicons
+                      name="image-outline"
+                      size={48}
+                      color={colors.light.mutedForeground}
+                    />
+                    <Text style={styles.placeholderText}>
+                      Нажмите, чтобы выбрать фото
+                    </Text>
+                    <Text style={styles.placeholderSubtext}>
+                      Рекомендуемый размер 16:9
+                    </Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+
               <Text style={styles.label}>Название события</Text>
               <TextInput
                 style={styles.input}
@@ -260,13 +432,6 @@ export default function CreateEventScreen() {
                 value={description}
                 onChangeText={setDescription}
                 textAlignVertical="top"
-              />
-              <Text style={styles.label}>Ссылка на обложку</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="URL изображения (https://...)"
-                value={imageUrl}
-                onChangeText={setImageUrl}
               />
             </View>
           )}
@@ -419,11 +584,17 @@ export default function CreateEventScreen() {
                 color="#fff"
               />
             </TouchableOpacity>
+
+            {step === 3 && editEvent && (
+              <TouchableOpacity style={styles.btnDelete} onPress={handleDelete}>
+                <Text style={styles.btnDeleteText}>Удалить событие</Text>
+                <Ionicons name="trash-outline" size={18} color="#EF4444" />
+              </TouchableOpacity>
+            )}
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
 
-      {/* Date Picker Modal */}
       <Modal
         visible={showDatePicker}
         transparent
@@ -469,7 +640,6 @@ export default function CreateEventScreen() {
         </View>
       </Modal>
 
-      {/* Time Picker Modal */}
       <Modal
         visible={showTimePicker}
         transparent
@@ -579,6 +749,60 @@ const styles = StyleSheet.create({
     color: colors.light.foreground,
   },
   textArea: { height: 100 },
+  imageUploadContainer: {
+    width: '100%',
+    height: 180,
+    backgroundColor: colors.light.card,
+    borderRadius: borderRadius.xl,
+    borderWidth: 2,
+    borderColor: colors.light.border,
+    borderStyle: 'dashed',
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
+  },
+  imageUploaded: {
+    borderStyle: 'solid',
+    borderColor: colors.light.primary,
+  },
+  previewImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  placeholderContainer: {
+    alignItems: 'center',
+    padding: spacing.lg,
+  },
+  placeholderText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.light.foreground,
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  placeholderSubtext: {
+    fontSize: 11,
+    color: colors.light.mutedForeground,
+    marginTop: 4,
+  },
+  changeImageBadge: {
+    position: 'absolute',
+    bottom: 12,
+    right: 12,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    gap: 6,
+  },
+  changeImageText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+  },
   selector: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -630,7 +854,7 @@ const styles = StyleSheet.create({
   },
   vibeLabelActive: { color: colors.light.primary },
   inputRow: { flexDirection: 'row', gap: 10 },
-  footerActions: { marginTop: 32 },
+  footerActions: { marginTop: 32, gap: 12 },
   btnMain: {
     backgroundColor: colors.light.foreground,
     padding: 14,
@@ -642,6 +866,18 @@ const styles = StyleSheet.create({
   },
   btnFinish: { backgroundColor: colors.light.primary },
   btnMainText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  btnDelete: {
+    backgroundColor: 'transparent',
+    padding: 14,
+    borderRadius: borderRadius.lg,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderColor: '#EF4444',
+  },
+  btnDeleteText: { color: '#EF4444', fontSize: 15, fontWeight: '700' },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.4)',

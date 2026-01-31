@@ -9,6 +9,7 @@ import {
   StatusBar,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,19 +19,10 @@ import { useDiscussionStore } from '../store/discussionStore';
 import { useUserStore } from '../store/userStore';
 import { useToast } from '../components/ToastProvider';
 import { DISCUSSION_CATEGORIES } from '../data/discussionMockData';
+import { calculateUserAge } from '../utils/dateUtils';
+import { sanitizeText } from '../utils/security';
 
 const AGE_LIMITS = [0, 6, 12, 16, 18];
-
-const calculateUserAge = (birthDate: string): number => {
-  const today = new Date();
-  const birthDateObj = new Date(birthDate);
-  let age = today.getFullYear() - birthDateObj.getFullYear();
-  const m = today.getMonth() - birthDateObj.getMonth();
-  if (m < 0 || (m === 0 && today.getDate() < birthDateObj.getDate())) {
-    age--;
-  }
-  return age;
-};
 
 export default function CreateDiscussionScreen() {
   const navigation = useNavigation<any>();
@@ -41,10 +33,11 @@ export default function CreateDiscussionScreen() {
   const [content, setContent] = useState('');
   const [selectedCat, setSelectedCat] = useState(DISCUSSION_CATEGORIES[1]);
   const [ageLimit, setAgeLimit] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const userAge = useMemo(() => calculateUserAge(user.birthDate), [user.birthDate]);
 
-  const handlePublish = () => {
+  const handlePublish = async () => {
     if (!content.trim()) {
       showToast({ message: 'Напишите что-нибудь...', type: 'error' });
       return;
@@ -58,7 +51,6 @@ export default function CreateDiscussionScreen() {
       return;
     }
 
-    // КИБЕРБЕЗОПАСНОСТЬ: Валидация возраста при создании
     if (ageLimit > userAge) {
       showToast({
         message: `Вы не можете создать обсуждение ${ageLimit}+, так как вам меньше лет`,
@@ -67,17 +59,29 @@ export default function CreateDiscussionScreen() {
       return;
     }
 
-    addPost({
-      categorySlug: selectedCat.id,
-      categoryName: selectedCat.label,
-      authorId: user.id || 'anonymous',
-      authorName: user.name || 'Аноним',
-      content: content.trim(),
-      ageLimit: ageLimit,
-    });
+    setIsSubmitting(true);
+    try {
+      const sanitizedContent = sanitizeText(content.trim());
+      // Ожидаем завершения запроса
+      await addPost({
+        categorySlug: selectedCat.id,
+        categoryName: selectedCat.label,
+        authorId: user.id || 'anonymous',
+        authorName: sanitizeText(user.name || 'Аноним'),
+        content: sanitizedContent,
+        ageLimit: ageLimit,
+      });
 
-    showToast({ message: 'Обсуждение создано!', type: 'success' });
-    navigation.goBack();
+      showToast({ message: 'Обсуждение создано!', type: 'success' });
+      navigation.goBack();
+    } catch (error: any) {
+      showToast({
+        message: error.message || 'Ошибка при создании обсуждения',
+        type: 'error',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -85,16 +89,27 @@ export default function CreateDiscussionScreen() {
       <StatusBar barStyle="dark-content" backgroundColor={colors.light.background} />
 
       <View style={styles.header}>
-        <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()}>
+        <TouchableOpacity
+          style={styles.headerBtn}
+          onPress={() => navigation.goBack()}
+          disabled={isSubmitting}
+        >
           <Ionicons name="close" size={28} color={colors.light.foreground} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Новая тема</Text>
         <TouchableOpacity
-          style={[styles.publishBtn, !content.trim() && styles.publishBtnDisabled]}
+          style={[
+            styles.publishBtn,
+            (!content.trim() || isSubmitting) && styles.publishBtnDisabled,
+          ]}
           onPress={handlePublish}
-          disabled={!content.trim()}
+          disabled={!content.trim() || isSubmitting}
         >
-          <Text style={styles.publishBtnText}>Готово</Text>
+          {isSubmitting ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <Text style={styles.publishBtnText}>Готово</Text>
+          )}
         </TouchableOpacity>
       </View>
 
@@ -115,7 +130,7 @@ export default function CreateDiscussionScreen() {
                     age > userAge && styles.ageChipDisabled,
                   ]}
                   onPress={() => setAgeLimit(age)}
-                  disabled={age > userAge}
+                  disabled={age > userAge || isSubmitting}
                 >
                   <Text
                     style={[
@@ -147,6 +162,7 @@ export default function CreateDiscussionScreen() {
                     selectedCat.id === cat.id && styles.catCardActive,
                   ]}
                   onPress={() => setSelectedCat(cat)}
+                  disabled={isSubmitting}
                 >
                   <Ionicons
                     name={cat.icon as any}
@@ -181,6 +197,7 @@ export default function CreateDiscussionScreen() {
                 value={content}
                 onChangeText={setContent}
                 maxLength={1000}
+                editable={!isSubmitting}
               />
               <View style={styles.inputFooter}>
                 <Text style={styles.infoSmall}>Минимум 10 символов</Text>
@@ -224,6 +241,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: borderRadius.lg,
+    minWidth: 70,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   publishBtnDisabled: { opacity: 0.5 },
   publishBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },

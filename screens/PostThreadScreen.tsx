@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -17,17 +17,8 @@ import { colors, spacing, borderRadius, typography } from '../theme/colors';
 import { useDiscussionStore } from '../store/discussionStore';
 import { useUserStore } from '../store/userStore';
 import { useToast } from '../components/ToastProvider';
-
-const calculateUserAge = (birthDate: string): number => {
-  const today = new Date();
-  const birthDateObj = new Date(birthDate);
-  let age = today.getFullYear() - birthDateObj.getFullYear();
-  const m = today.getMonth() - birthDateObj.getMonth();
-  if (m < 0 || (m === 0 && today.getDate() < birthDateObj.getDate())) {
-    age--;
-  }
-  return age;
-};
+import { calculateUserAge } from '../utils/dateUtils';
+import { sanitizeText } from '../utils/security';
 
 export default function PostThreadScreen() {
   const navigation = useNavigation();
@@ -36,7 +27,15 @@ export default function PostThreadScreen() {
   const { showToast } = useToast();
 
   const { user } = useUserStore();
-  const { posts, getCommentsByPostId, addComment, votePost } = useDiscussionStore();
+  const {
+    posts,
+    getCommentsByPostId,
+    addComment,
+    votePost,
+    fetchComments,
+    initSocket,
+    disconnectSocket,
+  } = useDiscussionStore();
 
   const post = (posts || []).find(p => p.id === postId);
   const comments = getCommentsByPostId(postId);
@@ -44,7 +43,16 @@ export default function PostThreadScreen() {
   const userAge = useMemo(() => calculateUserAge(user.birthDate), [user.birthDate]);
   const [commentText, setCommentText] = useState('');
 
-  // КИБЕРБЕЗОПАСНОСТЬ: Проверка доступа при загрузке
+  useEffect(() => {
+    if (postId) {
+      fetchComments(postId);
+      initSocket(postId);
+    }
+    return () => {
+      if (postId) disconnectSocket(postId);
+    };
+  }, [postId]);
+
   const hasAccess = useMemo(() => {
     if (!post) return false;
     return userAge >= (post.ageLimit || 0);
@@ -96,19 +104,28 @@ export default function PostThreadScreen() {
       showToast({ message: 'Войдите, чтобы голосовать', type: 'error' });
       return;
     }
-    votePost(postId, user.id, type);
+    votePost(postId, type);
   };
 
-  const handleSendComment = () => {
+  const handleSendComment = async () => {
     if (!commentText.trim()) return;
     if (!user.id) {
       showToast({ message: 'Сначала авторизуйтесь', type: 'error' });
       return;
     }
 
-    addComment(postId, user.id, user.name, commentText.trim());
-    setCommentText('');
-    showToast({ message: 'Комментарий добавлен', type: 'success' });
+    try {
+      const sanitizedComment = sanitizeText(commentText.trim());
+      const currentText = commentText.trim();
+      setCommentText(''); // Мгновенная очистка для UX
+      await addComment(postId, user.id, user.name, sanitizedComment);
+      showToast({ message: 'Комментарий добавлен', type: 'success' });
+    } catch (error: any) {
+      showToast({
+        message: error.message || 'Ошибка при добавлении комментария',
+        type: 'error',
+      });
+    }
   };
 
   const userVote = post.votedUsers?.[user.id];

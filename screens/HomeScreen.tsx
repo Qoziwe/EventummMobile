@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   ScrollView,
   StyleSheet,
@@ -8,8 +8,9 @@ import {
   InteractionManager,
   NativeSyntheticEvent,
   NativeScrollEvent,
+  RefreshControl,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, borderRadius, typography } from '../theme/colors';
 
@@ -24,42 +25,53 @@ import EventCard from '../components/EventCard';
 import { useEventStore } from '../store/eventStore';
 import { useUserStore } from '../store/userStore';
 import { useDiscussionStore } from '../store/discussionStore';
-
-const calculateUserAge = (birthDate: string): number => {
-  const today = new Date();
-  const birthDateObj = new Date(birthDate);
-  let age = today.getFullYear() - birthDateObj.getFullYear();
-  const m = today.getMonth() - birthDateObj.getMonth();
-  if (m < 0 || (m === 0 && today.getDate() < birthDateObj.getDate())) {
-    age--;
-  }
-  return age;
-};
+import { calculateUserAge } from '../utils/dateUtils';
 
 export default function HomeScreen() {
   const navigation = useNavigation<any>();
-  const { events } = useEventStore();
+  const { events, fetchEvents, isLoading: eventsLoading } = useEventStore();
   const { user } = useUserStore();
-  const { posts } = useDiscussionStore();
+  const { posts, fetchPosts, isLoading: postsLoading } = useDiscussionStore();
 
   const [activeFilters, setActiveFilters] = useState<Record<string, string>>({});
   const [visiblePopularCount, setVisiblePopularCount] = useState(8);
+  const [refreshing, setRefreshing] = useState(false);
 
   const userAge = useMemo(() => calculateUserAge(user.birthDate), [user.birthDate]);
 
+  // Авто-обновление данных при каждом переходе на экран
+  useFocusEffect(
+    useCallback(() => {
+      fetchEvents();
+      fetchPosts();
+    }, [])
+  );
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await Promise.all([fetchEvents(), fetchPosts()]);
+    setRefreshing(false);
+  }, [fetchEvents, fetchPosts]);
+
+  // КИБЕРБЕЗОПАСНОСТЬ: Базовая фильтрация всех ивентов по возрасту перед распределением по секциям
+  const ageAppropriateEvents = useMemo(() => {
+    return events.filter(e => userAge >= (e.ageLimit || 0));
+  }, [events, userAge]);
+
   const forYouEvents = useMemo(() => {
+    let result = ageAppropriateEvents;
     if (!user.interests || user.interests.length === 0) {
-      const special = events.filter(e => e.isForYou);
-      const regular = events.filter(e => !e.isForYou);
+      const special = result.filter(e => e.isForYou);
+      const regular = result.filter(e => !e.isForYou);
       return special.concat(regular).slice(0, 20);
     }
     const userInterestsLower = user.interests.map(i => i.toLowerCase());
-    const matched = events.filter(e => {
+    const matched = result.filter(e => {
       if (!e.categories || e.categories.length === 0) return false;
       return e.categories.some(cat => userInterestsLower.includes(cat.toLowerCase()));
     });
     if (matched.length === 0)
-      return events.filter(e => e.isForYou || e.stats > 500).slice(0, 10);
+      return result.filter(e => e.isForYou || e.stats > 500).slice(0, 10);
     return matched
       .sort((a, b) => {
         if (a.isForYou && !b.isForYou) return -1;
@@ -67,7 +79,7 @@ export default function HomeScreen() {
         return 0;
       })
       .slice(0, 20);
-  }, [events, user.interests]);
+  }, [ageAppropriateEvents, user.interests]);
 
   const nextWeekEvents = useMemo(() => {
     const now = new Date();
@@ -79,33 +91,31 @@ export default function HomeScreen() {
       now.getDate() + daysToMonday
     ).getTime();
     const nextSunEnd = nextMon + 7 * 24 * 60 * 60 * 1000 - 1;
-    const strict = events.filter(
+
+    const strict = ageAppropriateEvents.filter(
       e => e.timestamp >= nextMon && e.timestamp <= nextSunEnd
     );
-    const future = events.filter(e => e.timestamp > nextSunEnd);
+    const future = ageAppropriateEvents.filter(e => e.timestamp > nextSunEnd);
     return strict.concat(future).slice(0, 20);
-  }, [events]);
+  }, [ageAppropriateEvents]);
 
   const popularEvents = useMemo(() => {
-    return [...events]
+    return [...ageAppropriateEvents]
       .sort((a, b) => (b.stats || 0) - (a.stats || 0))
       .slice(0, visiblePopularCount);
-  }, [events, visiblePopularCount]);
+  }, [ageAppropriateEvents, visiblePopularCount]);
 
   const trendingDiscussions = useMemo(() => {
-    return (
-      [...(posts || [])]
-        // КИБЕРБЕЗОПАСНОСТЬ: Фильтрация в трендах
-        .filter(p => userAge >= (p.ageLimit || 0))
-        .sort((a, b) => b.upvotes - b.downvotes - (a.upvotes - a.downvotes))
-        .slice(0, 2)
-    );
+    return [...(posts || [])]
+      .filter(p => userAge >= (p.ageLimit || 0))
+      .sort((a, b) => b.upvotes - b.downvotes - (a.upvotes - a.downvotes))
+      .slice(0, 2);
   }, [posts, userAge]);
 
   function handleScroll(event: NativeSyntheticEvent<NativeScrollEvent>) {
     const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
     if (layoutMeasurement.height + contentOffset.y >= contentSize.height - 500) {
-      if (visiblePopularCount < events.length) {
+      if (visiblePopularCount < ageAppropriateEvents.length) {
         InteractionManager.runAfterInteractions(() =>
           setVisiblePopularCount(prev => prev + 8)
         );
@@ -125,6 +135,14 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
         onScroll={handleScroll}
         scrollEventThrottle={32}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[colors.light.primary]}
+            tintColor={colors.light.primary}
+          />
+        }
       >
         <View style={styles.heroTitleContainer}>
           <Text style={styles.heroTitle}>Твой город. Твои люди.</Text>
@@ -156,26 +174,30 @@ export default function HomeScreen() {
           </ForYouSection>
         )}
 
-        <NextWeekFeed
-          title="На следующей неделе"
-          events={nextWeekEvents}
-          onEventPress={e => navigation.navigate('EventDetail', { ...e })}
-          cardStyle={styles.horizontalCard}
-        />
+        {nextWeekEvents.length > 0 && (
+          <NextWeekFeed
+            title="На следующей неделе"
+            events={nextWeekEvents}
+            onEventPress={e => navigation.navigate('EventDetail', { ...e })}
+            cardStyle={styles.horizontalCard}
+          />
+        )}
 
-        <EventsGrid
-          title="Популярное в городе"
-          onViewAll={() => navigation.navigate('MainTabs', { screen: 'Search' })}
-        >
-          {popularEvents.map((e, i) => (
-            <EventCard
-              key={`p-${e.id}-${i}`}
-              {...e}
-              onPress={() => navigation.navigate('EventDetail', { ...e })}
-              style={styles.gridCard}
-            />
-          ))}
-        </EventsGrid>
+        {popularEvents.length > 0 && (
+          <EventsGrid
+            title="Популярное в городе"
+            onViewAll={() => navigation.navigate('MainTabs', { screen: 'Search' })}
+          >
+            {popularEvents.map((e, i) => (
+              <EventCard
+                key={`p-${e.id}-${i}`}
+                {...e}
+                onPress={() => navigation.navigate('EventDetail', { ...e })}
+                style={styles.gridCard}
+              />
+            ))}
+          </EventsGrid>
+        )}
 
         <View style={styles.discussionsSection}>
           <View style={styles.sectionHeader}>

@@ -6,6 +6,8 @@ import {
   ScrollView,
   TouchableOpacity,
   StatusBar,
+  Modal,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,7 +15,7 @@ import { useNavigation } from '@react-navigation/native';
 import { colors, spacing, borderRadius, typography } from '../theme/colors';
 import { useUserStore } from '../store/userStore';
 import { useEventStore } from '../store/eventStore';
-import { useDiscussionStore } from '../store/discussionStore'; // Убедитесь, что этот импорт есть
+import { useDiscussionStore } from '../store/discussionStore';
 import { useToast } from '../components/ToastProvider';
 
 import FavoritesList from '../components/ProfileComponents/FavoritesList';
@@ -23,13 +25,15 @@ export default function ProfileScreen() {
   const navigation = useNavigation<any>();
   const { user, logout, clearAllData, becomeOrganizer } = useUserStore();
   const { clearAllEvents } = useEventStore();
-  const { clearAllDiscussions } = useDiscussionStore(); // Подключаем метод
+  const { clearAllDiscussions } = useDiscussionStore();
   const { showToast } = useToast();
 
   const [activeTab, setActiveTab] = useState<'tickets' | 'favorites'>('tickets');
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
 
   const {
     avatarInitials,
+    avatarUrl,
     name,
     email,
     role,
@@ -53,14 +57,15 @@ export default function ProfileScreen() {
 
   const handleSecretClear = async () => {
     try {
-      // Последовательно очищаем все хранилища
       await clearAllData();
       await clearAllEvents();
       await clearAllDiscussions();
 
       showToast({ message: 'Все данные (вкл. обсуждения) сброшены', type: 'success' });
-    } catch (error) {
-      showToast({ message: 'Ошибка при сбросе данных', type: 'error' });
+      setShowClearConfirm(false);
+    } catch (error: any) {
+      showToast({ message: error.message || 'Ошибка при сбросе данных', type: 'error' });
+      setShowClearConfirm(false);
     }
   };
 
@@ -71,7 +76,6 @@ export default function ProfileScreen() {
       icon: 'card-outline',
       screen: 'Subscriptions',
     },
-    // Пункт только для исследователей
     ...(userType === 'explorer'
       ? [
           {
@@ -92,7 +96,7 @@ export default function ProfileScreen() {
       id: 'my_discussions',
       title: 'Мои обсуждения',
       icon: 'chatbubbles-outline',
-      screen: 'Communities', // Здесь остается имя роута из App.tsx (Communities)
+      screen: 'MyDiscussions',
     },
     { id: 'settings', title: 'Настройки', icon: 'settings-outline', screen: 'Settings' },
   ];
@@ -118,7 +122,11 @@ export default function ProfileScreen() {
         <View style={styles.profileHeaderContainer}>
           <View style={styles.topRow}>
             <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{avatarInitials}</Text>
+              {avatarUrl ? (
+                <Image source={{ uri: avatarUrl }} style={styles.avatarImage} />
+              ) : (
+                <Text style={styles.avatarText}>{avatarInitials}</Text>
+              )}
             </View>
             <View style={styles.infoColumn}>
               <View style={styles.nameRow}>
@@ -262,11 +270,45 @@ export default function ProfileScreen() {
           {activeTab === 'tickets' ? <TicketsList /> : <FavoritesList />}
         </View>
 
-        <TouchableOpacity onPress={handleSecretClear} style={styles.resetTrigger}>
+        <TouchableOpacity
+          onPress={() => setShowClearConfirm(true)}
+          style={styles.resetTrigger}
+        >
           <Text style={styles.resetText}>v.1.0.4-production-reset</Text>
         </TouchableOpacity>
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      <Modal
+        visible={showClearConfirm}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowClearConfirm(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.confirmModalContent}>
+            <Text style={styles.confirmModalTitle}>Сбросить все данные?</Text>
+            <Text style={styles.confirmModalText}>
+              Это действие удалит все ваши данные: события, обсуждения, билеты и
+              настройки. Это действие нельзя отменить.
+            </Text>
+            <View style={styles.confirmModalButtons}>
+              <TouchableOpacity
+                style={[styles.confirmModalButton, styles.confirmModalButtonCancel]}
+                onPress={() => setShowClearConfirm(false)}
+              >
+                <Text style={styles.confirmModalButtonCancelText}>Отмена</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.confirmModalButton, styles.confirmModalButtonConfirm]}
+                onPress={handleSecretClear}
+              >
+                <Text style={styles.confirmModalButtonConfirmText}>Сбросить</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -298,7 +340,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.light.secondary,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
+  avatarImage: { width: '100%', height: '100%' },
   avatarText: { fontSize: 24, fontWeight: '700' },
   infoColumn: { flex: 1 },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
@@ -407,4 +451,56 @@ const styles = StyleSheet.create({
   tabTextActive: { color: colors.light.foreground, fontWeight: '700' },
   resetTrigger: { marginTop: 30, alignItems: 'center', opacity: 0.15 },
   resetText: { fontSize: 9 },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.lg,
+  },
+  confirmModalContent: {
+    backgroundColor: colors.light.background,
+    borderRadius: borderRadius.xl,
+    padding: spacing.xl,
+    width: '100%',
+    maxWidth: 400,
+  },
+  confirmModalTitle: {
+    fontSize: typography.xl,
+    fontWeight: '800',
+    color: colors.light.foreground,
+    marginBottom: spacing.md,
+  },
+  confirmModalText: {
+    fontSize: typography.base,
+    color: colors.light.mutedForeground,
+    marginBottom: spacing.xl,
+    lineHeight: 22,
+  },
+  confirmModalButtons: {
+    flexDirection: 'row',
+    gap: spacing.md,
+  },
+  confirmModalButton: {
+    flex: 1,
+    padding: spacing.md,
+    borderRadius: borderRadius.lg,
+    alignItems: 'center',
+  },
+  confirmModalButtonCancel: {
+    backgroundColor: colors.light.secondary,
+    borderWidth: 1,
+    borderColor: colors.light.border,
+  },
+  confirmModalButtonCancelText: {
+    color: colors.light.foreground,
+    fontWeight: '700',
+  },
+  confirmModalButtonConfirm: {
+    backgroundColor: '#EF4444',
+  },
+  confirmModalButtonConfirmText: {
+    color: '#fff',
+    fontWeight: '700',
+  },
 });

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,15 +12,23 @@ import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, borderRadius, typography } from '../theme/colors';
 import { useUserStore } from '../store/userStore';
-import { ALL_EVENTS } from '../data/mockData';
+import { useEventStore } from '../store/eventStore'; // Импортируем eventStore
 import EventCard from '../components/EventCard';
 
 export default function SavedEventsScreen() {
   const navigation = useNavigation<any>();
   const { user } = useUserStore();
+  const { events, fetchEvents } = useEventStore(); // Получаем события из стора
 
-  // Получаем список событий, которые есть в избранном у пользователя
-  const savedEvents = ALL_EVENTS.filter(event => user.savedEventIds.includes(event.id));
+  // Если вдруг события еще не загружены в глобальный стор, пробуем их подтянуть
+  useEffect(() => {
+    if (events.length === 0) {
+      fetchEvents();
+    }
+  }, []);
+
+  // Получаем список событий, которые есть в избранном у пользователя, фильтруя массив из стора
+  const savedEvents = events.filter(event => user.savedEventIds.includes(event.id));
 
   const handleBack = () => navigation.goBack();
 

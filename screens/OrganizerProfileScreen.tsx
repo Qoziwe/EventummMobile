@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   StatusBar,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -32,7 +33,6 @@ export default function OrganizerProfileScreen() {
 
   const routeOrganizerId = route.params?.organizerId;
 
-  // Жесткое разделение: Организатор видит СВОЮ студию, Исследователь — только чужой профиль
   const isOwnProfile =
     currentUser.userType === 'organizer' &&
     (!routeOrganizerId || routeOrganizerId === currentUser.id);
@@ -42,7 +42,6 @@ export default function OrganizerProfileScreen() {
     const found = registeredUsers.find(u => u.id === routeOrganizerId);
     if (found) return found;
 
-    // Если это мок-автор, берем данные из параметров
     return {
       id: routeOrganizerId,
       name: route.params?.organizerName || 'Организатор',
@@ -133,7 +132,14 @@ export default function OrganizerProfileScreen() {
         <View style={styles.profileHeaderContainer}>
           <View style={styles.topRow}>
             <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{organizerData.avatarInitials}</Text>
+              {organizerData.avatarUrl ? (
+                <Image
+                  source={{ uri: organizerData.avatarUrl }}
+                  style={styles.avatarImage}
+                />
+              ) : (
+                <Text style={styles.avatarText}>{organizerData.avatarInitials}</Text>
+              )}
             </View>
             <View style={styles.infoColumn}>
               <View style={styles.nameRow}>
@@ -332,7 +338,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.light.secondary,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
+  avatarImage: { width: '100%', height: '100%' },
   avatarText: { fontSize: 24, fontWeight: '700' },
   infoColumn: { flex: 1 },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },

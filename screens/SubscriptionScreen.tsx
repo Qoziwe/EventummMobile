@@ -81,7 +81,7 @@ export function SubscriptionsScreen() {
   }, [navigation]);
 
   const handleSelectPlan = (planId: string) => {
-    console.log('Selected plan:', planId, 'Billing:', billingPeriod);
+    // plan selected: handle accordingly
   };
 
   return (

@@ -21,6 +21,8 @@ import { colors, spacing, borderRadius, typography } from '../theme/colors';
 import { useUserStore } from '../store/userStore';
 import { ALL_INTERESTS, UserRole, AVAILABLE_CITIES } from '../data/userMockData';
 import { useToast } from '../components/ToastProvider';
+import { validateEmail, validatePassword } from '../utils/security';
+import { validateBirthDate } from '../utils/dateUtils';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -37,11 +39,10 @@ const MONTHS = [
   { id: 'm3', label: 'Апреля', value: '04' },
   { id: 'm4', label: 'Мая', value: '05' },
   { id: 'm5', label: 'Июня', value: '06' },
-  { id: 'm6', label: 'Июля', value: '07' },
-  { id: 'm7', label: 'Августа', value: '08' },
-  { id: 'm8', label: 'Сентября', value: '09' },
-  { id: 'm9', label: 'Октября', value: '10' },
-  { id: 'm10', label: 'Ноября', value: '11' },
+  { id: 'm7', label: 'Июля', value: '07' },
+  { id: 'm8', label: 'Августа', value: '08' },
+  { id: 'm9', label: 'Сентября', value: '09' },
+  { id: 'm10', label: 'Ноября', value: '10' },
   { id: 'm11', label: 'Декабря', value: '12' },
 ];
 
@@ -73,10 +74,17 @@ const FadeInView = ({ children, delay = 0, style = {} }: any) => {
   );
 };
 
+type StepType = 'welcome' | 'form' | 'interests' | 'success';
+
+interface Step {
+  id: string;
+  type: StepType;
+}
+
 export default function AuthScreen() {
   const { register, login, updateInterests, completeRegistration, user } = useUserStore();
   const { showToast } = useToast();
-  const flatListRef = useRef<Animated.FlatList<any>>(null);
+  const flatListRef = useRef<FlatList<any>>(null);
   const scrollX = useRef(new Animated.Value(0)).current;
 
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('signup');
@@ -88,18 +96,31 @@ export default function AuthScreen() {
   const [showCityPicker, setShowCityPicker] = useState(false);
 
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [selDay, setSelDay] = useState('01');
-  const [selMonth, setSelMonth] = useState('01');
-  const [selYear, setSelYear] = useState('2000');
+  const [selDay, setSelDay] = useState('');
+  const [selMonth, setSelMonth] = useState('');
+  const [selYear, setSelYear] = useState('');
   const [birthDate, setBirthDate] = useState(''); // ГГГГ-ММ-ДД
 
   const [role, setRole] = useState<UserRole>('explorer');
   const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const [currentStepIndex, setCurrentStepIndex] = useState(0);
+
+  // Состояния для управления доступностью шагов
+  const [registrationCompleted, setRegistrationCompleted] = useState(false);
+  const [interestsCompleted, setInterestsCompleted] = useState(false);
+  const [loginCompleted, setLoginCompleted] = useState(false);
 
   const floatingAnim = useRef(new Animated.Value(0)).current;
   const cityModalAnim = useRef(new Animated.Value(0)).current;
   const dateModalAnim = useRef(new Animated.Value(0)).current;
+
+  // Конфигурация для супер-плавной пружины
+  const springConfig = {
+    damping: 20,
+    stiffness: 150,
+    mass: 0.8,
+    useNativeDriver: true,
+  };
 
   useEffect(() => {
     Animated.loop(
@@ -118,54 +139,129 @@ export default function AuthScreen() {
     ).start();
   }, [floatingAnim]);
 
-  const steps = useMemo(() => {
-    const s = [
-      { id: 'welcome', type: 'welcome' },
-      { id: 'form', type: 'form' },
-    ];
-    if (user.id) {
-      if (authMode === 'signup' && role === 'explorer')
-        s.push({ id: 'interests', type: 'interests' });
-      s.push({ id: 'success', type: 'success' });
+  // Определяем доступные шаги в зависимости от состояния
+  const steps = useMemo<Step[]>(() => {
+    const stepsArray: Step[] = [];
+
+    // Всегда показываем приветственный экран и форму
+    stepsArray.push({ id: 'welcome', type: 'welcome' });
+    stepsArray.push({ id: 'form', type: 'form' });
+
+    // Для регистрации исследователя показываем интересы только после успешной регистрации
+    if (
+      authMode === 'signup' &&
+      role === 'explorer' &&
+      registrationCompleted &&
+      !interestsCompleted
+    ) {
+      stepsArray.push({ id: 'interests', type: 'interests' });
     }
-    return s;
-  }, [authMode, role, user.id]);
+
+    // Показываем success только когда все условия выполнены
+    if (
+      (authMode === 'signup' &&
+        registrationCompleted &&
+        (role === 'organizer' || interestsCompleted)) ||
+      (authMode === 'login' && loginCompleted)
+    ) {
+      stepsArray.push({ id: 'success', type: 'success' });
+    }
+
+    return stepsArray;
+  }, [authMode, role, registrationCompleted, interestsCompleted, loginCompleted]);
+
+  // Автоматически переходим на последний шаг при изменении steps
+  useEffect(() => {
+    if (steps.length > 0 && flatListRef.current) {
+      // Если мы на шаге регистрации и она успешна, переходим к следующему шагу
+      if (registrationCompleted && !interestsCompleted && role === 'explorer') {
+        // Переходим к шагу интересов (индекс 2)
+        setTimeout(() => {
+          if (steps.length > 2) {
+            flatListRef.current?.scrollToIndex({ index: 2, animated: true });
+          }
+        }, 300);
+      }
+      // Если интересы заполнены, переходим к success
+      else if (interestsCompleted) {
+        setTimeout(() => {
+          if (steps.length > 3) {
+            flatListRef.current?.scrollToIndex({ index: 3, animated: true });
+          }
+        }, 300);
+      }
+      // Для организатора сразу переходим к success
+      else if (registrationCompleted && role === 'organizer') {
+        setTimeout(() => {
+          if (steps.length > 2) {
+            flatListRef.current?.scrollToIndex({ index: 2, animated: true });
+          }
+        }, 300);
+      }
+      // Для логина переходим к success
+      else if (loginCompleted) {
+        setTimeout(() => {
+          if (steps.length > 2) {
+            flatListRef.current?.scrollToIndex({ index: 2, animated: true });
+          }
+        }, 300);
+      }
+    }
+  }, [steps.length, registrationCompleted, interestsCompleted, loginCompleted, role]);
+
+  const goToStep = (index: number) => {
+    if (index >= 0 && index < steps.length && flatListRef.current) {
+      flatListRef.current.scrollToIndex({ index, animated: true });
+      setCurrentStepIndex(index);
+    }
+  };
+
+  const goToStepSafe = (index: number) => {
+    if (flatListRef.current && steps.length > index) {
+      flatListRef.current.scrollToIndex({
+        index,
+        animated: true,
+        viewPosition: 0.5,
+      });
+      setCurrentStepIndex(index);
+    }
+  };
 
   const openCityPicker = () => {
     setShowCityPicker(true);
-    Animated.timing(cityModalAnim, {
+    Animated.spring(cityModalAnim, {
       toValue: 1,
-      duration: 400,
-      useNativeDriver: true,
+      ...springConfig,
     }).start();
   };
 
   const closeCityPicker = () => {
-    Animated.timing(cityModalAnim, {
+    Animated.spring(cityModalAnim, {
       toValue: 0,
-      duration: 300,
-      useNativeDriver: true,
+      ...springConfig,
     }).start(() => setShowCityPicker(false));
   };
 
   const openDatePicker = () => {
     setShowDatePicker(true);
-    Animated.timing(dateModalAnim, {
+    Animated.spring(dateModalAnim, {
       toValue: 1,
-      duration: 400,
-      useNativeDriver: true,
+      ...springConfig,
     }).start();
   };
 
   const closeDatePicker = () => {
-    Animated.timing(dateModalAnim, {
+    Animated.spring(dateModalAnim, {
       toValue: 0,
-      duration: 300,
-      useNativeDriver: true,
+      ...springConfig,
     }).start(() => setShowDatePicker(false));
   };
 
   const handleConfirmDate = () => {
+    if (!selDay || !selMonth || !selYear) {
+      showToast({ message: 'Пожалуйста, выберите полную дату', type: 'error' });
+      return;
+    }
     setBirthDate(`${selYear}-${selMonth}-${selDay}`);
     closeDatePicker();
   };
@@ -183,19 +279,49 @@ export default function AuthScreen() {
       return;
     }
 
+    // Валидация email
+    if (!validateEmail(email)) {
+      showToast({ message: 'Некорректный формат email', type: 'error' });
+      return;
+    }
+
     setLoading(true);
     try {
       if (authMode === 'signup') {
-        if (!name) {
-          showToast({ message: 'Введите ваше имя', type: 'error' });
+        if (!name || name.trim().length < 2) {
+          showToast({ message: 'Введите ваше имя (минимум 2 символа)', type: 'error' });
           setLoading(false);
           return;
         }
+
+        // Валидация пароля
+        const passwordValidation = validatePassword(password);
+        if (!passwordValidation.valid) {
+          showToast({
+            message: passwordValidation.message || 'Некорректный пароль',
+            type: 'error',
+          });
+          setLoading(false);
+          return;
+        }
+
         if (!birthDate) {
           showToast({ message: 'Укажите дату рождения', type: 'error' });
           setLoading(false);
           return;
         }
+
+        // Валидация даты рождения
+        const birthDateValidation = validateBirthDate(birthDate);
+        if (!birthDateValidation.valid) {
+          showToast({
+            message: birthDateValidation.message || 'Некорректная дата рождения',
+            type: 'error',
+          });
+          setLoading(false);
+          return;
+        }
+
         if (!location) {
           showToast({ message: 'Выберите ваш город', type: 'error' });
           setLoading(false);
@@ -203,19 +329,32 @@ export default function AuthScreen() {
         }
 
         await register({
-          name,
-          email,
+          name: name.trim(),
+          email: email.toLowerCase().trim(),
           password,
           userType: role,
           location,
           birthDate,
           role: role === 'organizer' ? 'Организатор' : 'Исследователь',
         });
+
+        setRegistrationCompleted(true);
         showToast({ message: 'Аккаунт успешно создан!', type: 'success' });
+
+        // Для организатора интересы не нужны - сразу отмечаем как completed
+        if (role === 'organizer') {
+          setInterestsCompleted(true);
+        }
       } else {
-        const success = await login(email, password);
-        if (success) showToast({ message: 'С возвращением!', type: 'success' });
-        else showToast({ message: 'Неверный email или пароль.', type: 'error' });
+        const success = await login(email.toLowerCase().trim(), password);
+        if (success) {
+          showToast({ message: 'С возвращением!', type: 'success' });
+          setLoginCompleted(true);
+        } else {
+          showToast({ message: 'Неверный email или пароль.', type: 'error' });
+          setLoading(false);
+          return;
+        }
       }
     } catch (error: any) {
       showToast({ message: error.message || 'Ошибка', type: 'error' });
@@ -224,18 +363,57 @@ export default function AuthScreen() {
     }
   };
 
-  const handleFinishInterests = () => {
+  const handleFinishInterests = async () => {
     if (selectedInterests.length < 3) {
       showToast({ message: 'Выберите хотя бы 3 категории', type: 'info' });
       return;
     }
-    updateInterests(selectedInterests);
-    flatListRef.current?.scrollToIndex({ index: currentIndex + 1, animated: true });
+
+    try {
+      await updateInterests(selectedInterests);
+      setInterestsCompleted(true);
+      showToast({ message: 'Интересы сохранены!', type: 'success' });
+
+      // Ждем немного перед переходом
+      setTimeout(() => {
+        if (steps.length > 3) {
+          flatListRef.current?.scrollToIndex({ index: 3, animated: true });
+        }
+      }, 500);
+    } catch (error) {
+      // Даже если ошибка, все равно переходим дальше
+      setInterestsCompleted(true);
+      showToast({ message: 'Интересы сохранены локально', type: 'info' });
+
+      setTimeout(() => {
+        if (steps.length > 3) {
+          flatListRef.current?.scrollToIndex({ index: 3, animated: true });
+        }
+      }, 500);
+    }
   };
 
   const handleStart = (mode: 'login' | 'signup') => {
     setAuthMode(mode);
-    flatListRef.current?.scrollToIndex({ index: 1, animated: true });
+    // Сбрасываем все состояния
+    setRegistrationCompleted(false);
+    setInterestsCompleted(false);
+    setLoginCompleted(false);
+    setSelectedInterests([]);
+
+    // Переходим к форме
+    goToStepSafe(1);
+  };
+
+  const handleOpenApp = () => {
+    completeRegistration();
+    showToast({ message: 'Добро пожаловать в приложение!', type: 'success' });
+  };
+
+  const handleGoBack = () => {
+    if (currentStepIndex > 0) {
+      goToStep(currentStepIndex - 1);
+    }
   };
 
   const renderCityPicker = () => {
@@ -462,7 +640,7 @@ export default function AuthScreen() {
     );
   };
 
-  const renderStep = ({ item }: { item: any }) => {
+  const renderStep = ({ item }: { item: Step }) => {
     if (item.type === 'welcome') {
       return (
         <View style={styles.page}>
@@ -669,7 +847,13 @@ export default function AuthScreen() {
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.modeSwitch}
-            onPress={() => setAuthMode(authMode === 'signup' ? 'login' : 'signup')}
+            onPress={() => {
+              setAuthMode(authMode === 'signup' ? 'login' : 'signup');
+              setRegistrationCompleted(false);
+              setInterestsCompleted(false);
+              setLoginCompleted(false);
+              setSelectedInterests([]);
+            }}
           >
             <Text style={styles.modeSwitchText}>
               {authMode === 'signup'
@@ -728,6 +912,9 @@ export default function AuthScreen() {
               {'Подтвердить (' + selectedInterests.length + '/3)'}
             </Text>
           </TouchableOpacity>
+          <TouchableOpacity style={styles.secondaryButton} onPress={handleGoBack}>
+            <Text style={styles.secondaryButtonText}>Назад</Text>
+          </TouchableOpacity>
         </View>
       );
     }
@@ -743,9 +930,11 @@ export default function AuthScreen() {
           <Text style={styles.stepDescription}>
             {authMode === 'login'
               ? 'Авторизация прошла успешно.'
-              : 'Регистрация завершена.'}
+              : role === 'explorer'
+                ? 'Регистрация завершена! Теперь вы можете наслаждаться приложением.'
+                : 'Регистрация завершена! Теперь вы можете создавать события.'}
           </Text>
-          <TouchableOpacity style={styles.primaryButton} onPress={completeRegistration}>
+          <TouchableOpacity style={styles.primaryButton} onPress={handleOpenApp}>
             <Text style={styles.primaryButtonText}>Открыть приложение</Text>
           </TouchableOpacity>
         </View>
@@ -792,18 +981,18 @@ export default function AuthScreen() {
             ))}
           </View>
         </View>
-        <Animated.FlatList
+        <FlatList
           ref={flatListRef}
           data={steps}
-          extraData={[currentIndex, user.id, authMode, steps.length, location, birthDate]}
           renderItem={renderStep}
           keyExtractor={item => item.id}
           horizontal
           pagingEnabled
           showsHorizontalScrollIndicator={false}
+          scrollEnabled={false} // Отключаем свайп, управляем только программно
           scrollEventThrottle={16}
           onMomentumScrollEnd={e =>
-            setCurrentIndex(Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH))
+            setCurrentStepIndex(Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH))
           }
           onScroll={Animated.event([{ nativeEvent: { contentOffset: { x: scrollX } } }], {
             useNativeDriver: false,
@@ -813,6 +1002,7 @@ export default function AuthScreen() {
             offset: SCREEN_WIDTH * index,
             index,
           })}
+          extraData={steps.length}
         />
       </KeyboardAvoidingView>
       {renderCityPicker()}

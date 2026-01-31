@@ -21,9 +21,7 @@ import { useUserStore } from '../store/userStore';
 import { DISCUSSION_CATEGORIES } from '../data/discussionMockData';
 import { calculateUserAge } from '../utils/dateUtils';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-
-export default function DiscussionsScreen() {
+export default function MyDiscussionsScreen() {
   const navigation = useNavigation<any>();
   const { posts, fetchPosts } = useDiscussionStore();
   const { user } = useUserStore();
@@ -50,17 +48,26 @@ export default function DiscussionsScreen() {
   const filteredPosts = useMemo(() => {
     const currentPosts = posts || [];
     return currentPosts.filter(p => {
+      // ПРОВЕРКА НА ВЗАИМОДЕЙСТВИЕ: Пользователь автор ИЛИ пользователь голосовал
+      const isInteracted =
+        p.authorId === user.id ||
+        (p.votedUsers && Object.keys(p.votedUsers).includes(user.id.toString()));
+
+      if (!isInteracted) return false;
+
       const isAgeAppropriate = userAge >= (p.ageLimit || 0);
       if (!isAgeAppropriate) return false;
 
       const matchesSearch =
         p.content.toLowerCase().includes(searchValue.toLowerCase()) ||
         p.authorName.toLowerCase().includes(searchValue.toLowerCase());
+
       const matchesCategory =
         selectedCategory === 'all' || p.categorySlug === selectedCategory;
+
       return matchesSearch && matchesCategory;
     });
-  }, [searchValue, selectedCategory, posts, userAge]);
+  }, [searchValue, selectedCategory, posts, userAge, user.id]);
 
   return (
     <SafeAreaView style={styles.fullContainer} edges={['top']}>
@@ -70,7 +77,7 @@ export default function DiscussionsScreen() {
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={24} color={colors.light.foreground} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Обсуждения</Text>
+        <Text style={styles.headerTitle}>Мои обсуждения</Text>
         <TouchableOpacity
           style={styles.headerButtonRight}
           onPress={() => navigation.navigate('CreateDiscussion')}
@@ -101,7 +108,7 @@ export default function DiscussionsScreen() {
             />
             <TextInput
               style={styles.searchInput}
-              placeholder="Поиск по темам..."
+              placeholder="Поиск в моих темах..."
               placeholderTextColor={colors.light.mutedForeground}
               value={searchValue}
               onChangeText={setSearchValue}
@@ -166,9 +173,9 @@ export default function DiscussionsScreen() {
                   color={colors.light.mutedForeground}
                 />
               </View>
-              <Text style={styles.emptyTextTitle}>Тишина в эфире</Text>
+              <Text style={styles.emptyTextTitle}>Вы пока не участвовали</Text>
               <Text style={styles.emptyTextSub}>
-                Попробуйте изменить категорию или создайте своё обсуждение первым!
+                Здесь появятся обсуждения, которые вы создали или в которых голосовали.
               </Text>
             </View>
           )}

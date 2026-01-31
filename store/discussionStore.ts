@@ -1,164 +1,152 @@
 import { create } from 'zustand';
-import { persist, createJSONStorage, StateStorage } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Platform } from 'react-native';
-import {
-  PostData,
-  CommentData,
-  INITIAL_POSTS,
-  INITIAL_COMMENTS,
-} from '../data/discussionMockData';
+import { PostData, CommentData } from '../data/discussionMockData';
+import { apiClient, BASE_URL } from '../api/apiClient';
+import { sanitizeText } from '../utils/security';
+import { io, Socket } from 'socket.io-client';
 
-const customStorage: StateStorage = {
-  getItem: async (name: string): Promise<string | null> => {
-    try {
-      if (Platform.OS === 'web') return localStorage.getItem(name);
-      return await AsyncStorage.getItem(name);
-    } catch {
-      return null;
-    }
-  },
-  setItem: async (name: string, value: string): Promise<void> => {
-    try {
-      if (Platform.OS === 'web') localStorage.setItem(name, value);
-      else await AsyncStorage.setItem(name, value);
-    } catch {}
-  },
-  removeItem: async (name: string): Promise<void> => {
-    try {
-      if (Platform.OS === 'web') localStorage.removeItem(name);
-      else await AsyncStorage.removeItem(name);
-    } catch {}
-  },
-};
+const SOCKET_URL = BASE_URL.replace('/api', '');
 
 interface DiscussionState {
   posts: PostData[];
   comments: Record<string, CommentData[]>;
+  isLoading: boolean;
+  socket: Socket | null;
+  fetchPosts: () => Promise<void>;
+  getPostById: (id: string) => PostData | undefined;
+  getCommentsByPostId: (postId: string) => CommentData[];
   addPost: (
     post: Omit<
       PostData,
       'id' | 'timestamp' | 'upvotes' | 'downvotes' | 'commentCount' | 'votedUsers'
     >
-  ) => void;
+  ) => Promise<void>;
   addComment: (
     postId: string,
-    authorId: string,
-    authorName: string,
-    content: string,
-    parentId?: string
-  ) => void;
-  votePost: (postId: string, userId: string, type: 'up' | 'down') => void;
-  getPostById: (id: string) => PostData | undefined;
-  getCommentsByPostId: (postId: string) => CommentData[];
+    userId: string,
+    userName: string,
+    content: string
+  ) => Promise<void>;
+  fetchComments: (postId: string) => Promise<CommentData[]>;
+  votePost: (postId: string, type: 'up' | 'down') => Promise<void>;
   clearAllDiscussions: () => Promise<void>;
+  initSocket: (postId: string) => void;
+  disconnectSocket: (postId: string) => void;
 }
 
 export const useDiscussionStore = create<DiscussionState>()(
   persist(
     (set, get) => ({
-      posts: INITIAL_POSTS || [],
-      comments: INITIAL_COMMENTS || {},
+      posts: [],
+      comments: {},
+      isLoading: false,
+      socket: null,
 
-      getPostById: id => {
-        const currentPosts = get().posts || [];
-        return currentPosts.find(p => p.id === id);
-      },
+      initSocket: postId => {
+        let socket = get().socket;
+        if (!socket) {
+          socket = io(SOCKET_URL, { transports: ['websocket'] });
+          set({ socket });
+        }
 
-      getCommentsByPostId: postId => {
-        const currentComments = get().comments || {};
-        return currentComments[postId] || [];
-      },
+        socket.emit('join_post', { postId });
 
-      addPost: data => {
-        const newPost: PostData = {
-          ...data,
-          id: `post_${Math.random().toString(36).substr(2, 9)}`,
-          timestamp: new Date().toISOString(),
-          upvotes: 0,
-          downvotes: 0,
-          commentCount: 0,
-          votedUsers: {},
-          ageLimit: data.ageLimit || 0,
-        };
-        set(state => ({
-          posts: [newPost, ...(state.posts || [])],
-        }));
-      },
+        socket.on('new_comment', (comment: CommentData) => {
+          const currentComments = get().comments[postId] || [];
+          if (currentComments.some(c => c.id === comment.id)) return;
 
-      addComment: (postId, authorId, authorName, content, parentId) => {
-        const newComment: CommentData = {
-          id: `comm_${Math.random().toString(36).substr(2, 9)}`,
-          postId,
-          authorId,
-          authorName,
-          content: content.trim(),
-          timestamp: new Date().toISOString(),
-          upvotes: 0,
-          downvotes: 0,
-          depth: parentId ? 1 : 0,
-          parentId,
-        };
+          set(state => ({
+            comments: {
+              ...state.comments,
+              [postId]: [...currentComments, comment],
+            },
+            posts: state.posts.map(p =>
+              p.id === postId ? { ...p, commentCount: p.commentCount + 1 } : p
+            ),
+          }));
+        });
 
-        set(state => {
-          const allComments = state.comments || {};
-          const postComments = allComments[postId] || [];
-          const allPosts = state.posts || [];
-
-          const updatedPosts = allPosts.map(p =>
-            p.id === postId ? { ...p, commentCount: p.commentCount + 1 } : p
-          );
-
-          return {
-            comments: { ...allComments, [postId]: [...postComments, newComment] },
-            posts: updatedPosts,
-          };
+        socket.on('vote_update', (data: any) => {
+          set(state => ({
+            posts: state.posts.map(p =>
+              p.id === data.postId
+                ? {
+                    ...p,
+                    upvotes: data.upvotes,
+                    downvotes: data.downvotes,
+                    votedUsers: data.votedUsers,
+                  }
+                : p
+            ),
+          }));
         });
       },
 
-      votePost: (postId, userId, type) => {
-        set(state => {
-          const allPosts = state.posts || [];
-          return {
-            posts: allPosts.map(post => {
-              if (post.id !== postId) return post;
+      disconnectSocket: postId => {
+        const socket = get().socket;
+        if (socket) {
+          socket.emit('leave_post', { postId });
+          socket.off('new_comment');
+          socket.off('vote_update');
+        }
+      },
 
-              const votedUsers = post.votedUsers || {};
-              const userVote = votedUsers[userId];
-              let { upvotes, downvotes } = post;
-              const newVotedUsers = { ...votedUsers };
+      fetchPosts: async () => {
+        try {
+          set({ isLoading: true });
+          const data = await apiClient('posts', { method: 'GET' });
+          set({ posts: data, isLoading: false });
+        } catch (e: any) {
+          set({ isLoading: false });
+        }
+      },
 
-              if (userVote === type) {
-                delete newVotedUsers[userId];
-                if (type === 'up') upvotes--;
-                else downvotes--;
-              } else {
-                if (userVote) {
-                  if (userVote === 'up') upvotes--;
-                  else downvotes--;
-                }
-                newVotedUsers[userId] = type;
-                if (type === 'up') upvotes++;
-                else downvotes++;
-              }
+      getPostById: id => get().posts.find(p => p.id === id),
+      getCommentsByPostId: postId => get().comments[postId] || [],
 
-              return { ...post, upvotes, downvotes, votedUsers: newVotedUsers };
-            }),
-          };
+      addPost: async data => {
+        await apiClient('posts', {
+          method: 'POST',
+          body: JSON.stringify({ ...data, content: sanitizeText(data.content) }),
         });
+        await get().fetchPosts();
+      },
+
+      addComment: async (postId, userId, userName, content) => {
+        await apiClient(`posts/${postId}/comments`, {
+          method: 'POST',
+          body: JSON.stringify({ content: sanitizeText(content.trim()) }),
+        });
+      },
+
+      fetchComments: async postId => {
+        try {
+          const data = await apiClient(`posts/${postId}/comments`, { method: 'GET' });
+          set(state => ({ comments: { ...state.comments, [postId]: data } }));
+          return data;
+        } catch (e: any) {
+          return [];
+        }
+      },
+
+      votePost: async (postId, type) => {
+        try {
+          await apiClient(`posts/${postId}/vote`, {
+            method: 'POST',
+            body: JSON.stringify({ type }),
+          });
+        } catch (e: any) {}
       },
 
       clearAllDiscussions: async () => {
-        await useDiscussionStore.persist.clearStorage();
-        set({
-          posts: INITIAL_POSTS || [],
-          comments: INITIAL_COMMENTS || {},
-        });
+        set({ posts: [], comments: {} });
       },
     }),
     {
       name: 'discussion-app-storage',
-      storage: createJSONStorage(() => customStorage),
+      storage: createJSONStorage(() => AsyncStorage),
+      partialize: state => ({ posts: state.posts, comments: state.comments }),
     }
   )
 );
