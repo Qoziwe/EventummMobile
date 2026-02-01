@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -26,6 +26,7 @@ import { useToast } from '../components/ToastProvider';
 import { ALL_INTERESTS } from '../data/userMockData';
 import { validatePhone, formatPhone, sanitizeText } from '../utils/security';
 import { validateBirthDate } from '../utils/dateUtils';
+import Header from '../components/Header';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -61,6 +62,42 @@ export default function EditProfileScreen() {
   const { showToast } = useToast();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+
+  // Убираем фокус с элементов при открытии экрана на веб-платформе
+  useEffect(() => {
+    if (Platform.OS === 'web') {
+      const timer = setTimeout(() => {
+        if (typeof window !== 'undefined' && window.document) {
+          const activeElement = window.document.activeElement as HTMLElement;
+          if (activeElement && activeElement.blur) {
+            const hiddenParent = activeElement.closest('[aria-hidden="true"]');
+            if (hiddenParent) {
+              activeElement.blur();
+            }
+          }
+        }
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
+  // Убираем фокус с элементов при открытии модального окна на веб-платформе
+  useEffect(() => {
+    if (Platform.OS === 'web' && showDeleteConfirm) {
+      const timer = setTimeout(() => {
+        if (typeof window !== 'undefined' && window.document) {
+          const activeElement = window.document.activeElement as HTMLElement;
+          if (activeElement && activeElement.blur) {
+            const hiddenParent = activeElement.closest('[aria-hidden="true"]');
+            if (hiddenParent) {
+              activeElement.blur();
+            }
+          }
+        }
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [showDeleteConfirm]);
 
   const [formData, setFormData] = useState({
     name: user.name,
@@ -267,9 +304,19 @@ export default function EditProfileScreen() {
         transparent
         animationType="none"
         onRequestClose={closeDatePicker}
+        accessibilityViewIsModal={true}
+        presentationStyle="overFullScreen"
       >
-        <View style={styles.modalRoot}>
-          <Animated.View style={[styles.modalBackdrop, { opacity: backdropOpacity }]}>
+        <View 
+          style={styles.modalRoot}
+          accessible={false}
+          importantForAccessibility="yes"
+          accessibilityElementsHidden={false}
+        >
+          <Animated.View 
+            style={[styles.modalBackdrop, { opacity: backdropOpacity }]}
+            accessible={false}
+          >
             <TouchableOpacity
               style={styles.flex}
               activeOpacity={1}
@@ -375,17 +422,20 @@ export default function EditProfileScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.fullContainer} edges={['top']}>
+    <View style={styles.fullContainer}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.light.background} />
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.headerButton} onPress={() => navigation.goBack()}>
-          <Ionicons name="close" size={24} color={colors.light.foreground} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Редактировать</Text>
-        <TouchableOpacity style={styles.headerButton} onPress={handleSave}>
-          <Text style={styles.saveButtonText}>Готово</Text>
-        </TouchableOpacity>
-      </View>
+
+      <Header
+        title="Редактировать"
+        showBack={true}
+        onBackPress={() => navigation.goBack()}
+        rightElement={
+          <TouchableOpacity onPress={handleSave}>
+            <Text style={styles.saveButtonText}>Готово</Text>
+          </TouchableOpacity>
+        }
+      />
+
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
@@ -540,9 +590,21 @@ export default function EditProfileScreen() {
         transparent
         animationType="fade"
         onRequestClose={() => setShowDeleteConfirm(false)}
+        accessibilityViewIsModal={true}
+        presentationStyle="overFullScreen"
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.deleteModalContent}>
+        <View 
+          style={styles.modalOverlay} 
+          accessible={false}
+          importantForAccessibility="yes"
+          accessibilityElementsHidden={false}
+        >
+          <View 
+            style={styles.deleteModalContent} 
+            accessibilityViewIsModal={true}
+            importantForAccessibility="yes"
+            accessible={true}
+          >
             <Text style={styles.deleteModalTitle}>Удалить аккаунт?</Text>
             <Text style={styles.deleteModalText}>
               Это действие нельзя отменить. Все ваши данные будут удалены безвозвратно.
@@ -564,28 +626,13 @@ export default function EditProfileScreen() {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   fullContainer: { flex: 1, backgroundColor: colors.light.background },
   flex: { flex: 1 },
-  header: {
-    height: 56,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.light.border,
-  },
-  headerButton: { padding: spacing.sm, minWidth: 60 },
-  headerTitle: {
-    fontSize: typography.lg,
-    fontWeight: '700',
-    color: colors.light.foreground,
-  },
   saveButtonText: {
     fontSize: typography.base,
     fontWeight: '600',

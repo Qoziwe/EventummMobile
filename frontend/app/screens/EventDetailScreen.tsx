@@ -423,9 +423,19 @@ export default function EventDetailScreen() {
         animationType="none"
         transparent={true}
         onRequestClose={closePaymentModal}
+        accessibilityViewIsModal={true}
+        presentationStyle="overFullScreen"
       >
-        <View style={styles.modalRoot}>
-          <Animated.View style={[styles.backdrop, { opacity: backdropOpacity }]}>
+        <View 
+          style={styles.modalRoot} 
+          accessible={false}
+          importantForAccessibility="yes"
+          accessibilityElementsHidden={false}
+        >
+          <Animated.View 
+            style={[styles.backdrop, { opacity: backdropOpacity }]} 
+            accessible={false}
+          >
             <TouchableOpacity
               style={styles.flex}
               activeOpacity={1}

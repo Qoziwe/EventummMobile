@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { Platform } from 'react-native';
 import {
   View,
   Text,
@@ -30,6 +31,26 @@ export default function ProfileScreen() {
 
   const [activeTab, setActiveTab] = useState<'tickets' | 'favorites'>('tickets');
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+
+  // Убираем фокус с элементов при открытии модального окна на веб-платформе
+  useEffect(() => {
+    if (Platform.OS === 'web' && showClearConfirm) {
+      // Небольшая задержка, чтобы модальное окно успело отрендериться
+      const timer = setTimeout(() => {
+        if (typeof window !== 'undefined' && window.document) {
+          const activeElement = window.document.activeElement as HTMLElement;
+          if (activeElement && activeElement.blur) {
+            // Проверяем, находится ли активный элемент в скрытом контейнере
+            const hiddenParent = activeElement.closest('[aria-hidden="true"]');
+            if (hiddenParent) {
+              activeElement.blur();
+            }
+          }
+        }
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [showClearConfirm]);
 
   const {
     avatarInitials,
@@ -120,9 +141,17 @@ export default function ProfileScreen() {
     <View style={styles.fullContainer}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.light.background} />
 
-      <Header title="Профиль" showBack={true} onBackPress={() => navigation.goBack()} />
+      <View 
+        accessibilityElementsHidden={showClearConfirm}
+        importantForAccessibility={showClearConfirm ? 'no-hide-descendants' : 'yes'}
+        style={{ flex: 1 }}
+      >
+        <Header title="Профиль" showBack={true} onBackPress={() => navigation.goBack()} />
 
-      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+        <ScrollView 
+          style={styles.container} 
+          showsVerticalScrollIndicator={false}
+        >
         <View style={styles.profileHeaderContainer}>
           <View style={styles.topRow}>
             <View style={styles.avatar}>
@@ -282,15 +311,28 @@ export default function ProfileScreen() {
         </TouchableOpacity>
         <View style={{ height: 40 }} />
       </ScrollView>
+      </View>
 
       <Modal
         visible={showClearConfirm}
         transparent
         animationType="fade"
         onRequestClose={() => setShowClearConfirm(false)}
+        accessibilityViewIsModal={true}
+        presentationStyle="overFullScreen"
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.confirmModalContent}>
+        <View 
+          style={styles.modalOverlay} 
+          accessible={false}
+          importantForAccessibility="yes"
+          accessibilityElementsHidden={false}
+        >
+          <View 
+            style={styles.confirmModalContent} 
+            accessibilityViewIsModal={true}
+            importantForAccessibility="yes"
+            accessible={true}
+          >
             <Text style={styles.confirmModalTitle}>Сбросить все данные?</Text>
             <Text style={styles.confirmModalText}>
               Это действие удалит все ваши данные: события, обсуждения, билеты и

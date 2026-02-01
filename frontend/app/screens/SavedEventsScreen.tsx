@@ -7,18 +7,18 @@ import {
   TouchableOpacity,
   StatusBar,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, borderRadius, typography } from '../theme/colors';
 import { useUserStore } from '../store/userStore';
-import { useEventStore } from '../store/eventStore'; // Импортируем eventStore
+import { useEventStore } from '../store/eventStore';
 import EventCard from '../components/EventCard';
+import Header from '../components/Header';
 
 export default function SavedEventsScreen() {
   const navigation = useNavigation<any>();
   const { user } = useUserStore();
-  const { events, fetchEvents } = useEventStore(); // Получаем события из стора
+  const { events, fetchEvents } = useEventStore();
 
   // Если вдруг события еще не загружены в глобальный стор, пробуем их подтянуть
   useEffect(() => {
@@ -33,16 +33,10 @@ export default function SavedEventsScreen() {
   const handleBack = () => navigation.goBack();
 
   return (
-    <SafeAreaView style={styles.fullContainer} edges={['top']}>
+    <View style={styles.fullContainer}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.light.background} />
 
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={handleBack}>
-          <Ionicons name="arrow-back" size={24} color={colors.light.foreground} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Сохраненные</Text>
-        <View style={{ width: 40 }} />
-      </View>
+      <Header title="Сохраненные" showBack={true} onBackPress={handleBack} />
 
       <ScrollView
         style={styles.container}
@@ -83,27 +77,12 @@ export default function SavedEventsScreen() {
           </View>
         )}
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   fullContainer: { flex: 1, backgroundColor: colors.light.background },
-  header: {
-    height: 56,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.light.border,
-  },
-  backBtn: { width: 40, height: 40, justifyContent: 'center' },
-  headerTitle: {
-    fontSize: typography.xl,
-    fontWeight: '700',
-    color: colors.light.foreground,
-  },
   container: { flex: 1 },
   scrollContent: { paddingBottom: 40 },
   resultsWrapper: {

@@ -7,12 +7,12 @@ import {
   TouchableOpacity,
   StatusBar,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 import { useUserStore } from '../store/userStore';
 import { useEventStore } from '../store/eventStore';
 import { colors, spacing, borderRadius } from '../theme/colors';
+import Header from '../components/Header';
 
 export default function FollowedOrganizersScreen() {
   const navigation = useNavigation<any>();
@@ -43,15 +43,14 @@ export default function FollowedOrganizersScreen() {
   }, [user.followingOrganizerIds, registeredUsers, events]);
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <StatusBar barStyle="dark-content" />
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color={colors.light.foreground} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Мои авторы</Text>
-        <View style={{ width: 24 }} />
-      </View>
+    <View style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor={colors.light.background} />
+
+      <Header
+        title="Мои авторы"
+        showBack={true}
+        onBackPress={() => navigation.goBack()}
+      />
 
       <FlatList
         data={followedOrganizers}
@@ -87,21 +86,12 @@ export default function FollowedOrganizersScreen() {
           </View>
         }
       />
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.light.background },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.light.border,
-  },
-  headerTitle: { fontSize: 18, fontWeight: '700' },
   card: {
     flexDirection: 'row',
     alignItems: 'center',

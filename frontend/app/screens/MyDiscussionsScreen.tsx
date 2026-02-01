@@ -7,10 +7,8 @@ import {
   TouchableOpacity,
   TextInput,
   StatusBar,
-  Dimensions,
   RefreshControl,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 
@@ -20,6 +18,7 @@ import { useDiscussionStore } from '../store/discussionStore';
 import { useUserStore } from '../store/userStore';
 import { DISCUSSION_CATEGORIES } from '../data/discussionMockData';
 import { calculateUserAge } from '../utils/dateUtils';
+import Header from '../components/Header';
 
 export default function MyDiscussionsScreen() {
   const navigation = useNavigation<any>();
@@ -70,21 +69,22 @@ export default function MyDiscussionsScreen() {
   }, [searchValue, selectedCategory, posts, userAge, user.id]);
 
   return (
-    <SafeAreaView style={styles.fullContainer} edges={['top']}>
+    <View style={styles.fullContainer}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.light.background} />
 
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color={colors.light.foreground} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Мои обсуждения</Text>
-        <TouchableOpacity
-          style={styles.headerButtonRight}
-          onPress={() => navigation.navigate('CreateDiscussion')}
-        >
-          <Ionicons name="add" size={28} color={colors.light.foreground} />
-        </TouchableOpacity>
-      </View>
+      <Header
+        title="Мои обсуждения"
+        showBack={true}
+        onBackPress={() => navigation.goBack()}
+        rightElement={
+          <TouchableOpacity
+            onPress={() => navigation.navigate('CreateDiscussion')}
+            style={{ padding: 4 }}
+          >
+            <Ionicons name="add" size={28} color={colors.light.foreground} />
+          </TouchableOpacity>
+        }
+      />
 
       <ScrollView
         style={styles.container}
@@ -182,34 +182,12 @@ export default function MyDiscussionsScreen() {
         </View>
         <View style={{ height: 60 }} />
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   fullContainer: { flex: 1, backgroundColor: colors.light.background },
-  header: {
-    height: 56,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.light.border,
-    backgroundColor: colors.light.background,
-  },
-  backBtn: { width: 40, height: 40, justifyContent: 'center' },
-  headerButtonRight: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'flex-end',
-  },
-  headerTitle: {
-    fontSize: typography.xl,
-    fontWeight: '700',
-    color: colors.light.foreground,
-  },
   container: { flex: 1 },
   searchWrapper: { paddingHorizontal: spacing.lg, paddingTop: spacing.lg },
   searchContainer: {

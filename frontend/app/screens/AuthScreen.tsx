@@ -434,9 +434,19 @@ export default function AuthScreen() {
         transparent
         animationType="none"
         onRequestClose={closeCityPicker}
+        accessibilityViewIsModal={true}
+        presentationStyle="overFullScreen"
       >
-        <View style={styles.modalRoot}>
-          <Animated.View style={[styles.modalBackdrop, { opacity: backdropOpacity }]}>
+        <View 
+          style={styles.modalRoot} 
+          accessible={false}
+          importantForAccessibility="yes"
+          accessibilityElementsHidden={false}
+        >
+          <Animated.View 
+            style={[styles.modalBackdrop, { opacity: backdropOpacity }]} 
+            accessible={false}
+          >
             <TouchableOpacity
               style={styles.flex}
               activeOpacity={1}
@@ -529,9 +539,19 @@ export default function AuthScreen() {
         transparent
         animationType="none"
         onRequestClose={closeDatePicker}
+        accessibilityViewIsModal={true}
+        presentationStyle="overFullScreen"
       >
-        <View style={styles.modalRoot}>
-          <Animated.View style={[styles.modalBackdrop, { opacity: backdropOpacity }]}>
+        <View 
+          style={styles.modalRoot} 
+          accessible={false}
+          importantForAccessibility="yes"
+          accessibilityElementsHidden={false}
+        >
+          <Animated.View 
+            style={[styles.modalBackdrop, { opacity: backdropOpacity }]} 
+            accessible={false}
+          >
             <TouchableOpacity
               style={styles.flex}
               activeOpacity={1}

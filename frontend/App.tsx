@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createBottomTabNavigator, BottomTabBar } from '@react-navigation/bottom-tabs';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 
@@ -43,10 +43,23 @@ import { Ionicons } from '@expo/vector-icons';
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
+// Кастомный BottomTabBar с правильной обработкой доступности
+function CustomTabBar(props: any) {
+  return (
+    <View
+      importantForAccessibility="yes"
+      accessibilityElementsHidden={false}
+    >
+      <BottomTabBar {...props} />
+    </View>
+  );
+}
+
 function TabNavigator() {
   // Мы убрали локальный useSafeAreaInsets, так как теперь отступы обрабатываются глобально (снизу)
   return (
     <Tab.Navigator
+      tabBar={(props) => <CustomTabBar {...props} />}
       screenOptions={({ route }) => ({
         tabBarIcon: ({ focused, color, size }) => {
           let iconName: keyof typeof Ionicons.glyphMap;

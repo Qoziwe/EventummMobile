@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -60,6 +60,42 @@ export default function EditStudioScreen() {
   const { showToast } = useToast();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+
+  // Убираем фокус с элементов при открытии экрана на веб-платформе
+  useEffect(() => {
+    if (Platform.OS === 'web') {
+      const timer = setTimeout(() => {
+        if (typeof window !== 'undefined' && window.document) {
+          const activeElement = window.document.activeElement as HTMLElement;
+          if (activeElement && activeElement.blur) {
+            const hiddenParent = activeElement.closest('[aria-hidden="true"]');
+            if (hiddenParent) {
+              activeElement.blur();
+            }
+          }
+        }
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
+  // Убираем фокус с элементов при открытии модального окна на веб-платформе
+  useEffect(() => {
+    if (Platform.OS === 'web' && showDeleteConfirm) {
+      const timer = setTimeout(() => {
+        if (typeof window !== 'undefined' && window.document) {
+          const activeElement = window.document.activeElement as HTMLElement;
+          if (activeElement && activeElement.blur) {
+            const hiddenParent = activeElement.closest('[aria-hidden="true"]');
+            if (hiddenParent) {
+              activeElement.blur();
+            }
+          }
+        }
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [showDeleteConfirm]);
 
   const [formData, setFormData] = useState({
     name: user.name,
@@ -255,9 +291,19 @@ export default function EditStudioScreen() {
         transparent
         animationType="none"
         onRequestClose={closeDatePicker}
+        accessibilityViewIsModal={true}
+        presentationStyle="overFullScreen"
       >
-        <View style={styles.modalRoot}>
-          <Animated.View style={[styles.modalBackdrop, { opacity: backdropOpacity }]}>
+        <View 
+          style={styles.modalRoot}
+          accessible={false}
+          importantForAccessibility="yes"
+          accessibilityElementsHidden={false}
+        >
+          <Animated.View 
+            style={[styles.modalBackdrop, { opacity: backdropOpacity }]}
+            accessible={false}
+          >
             <TouchableOpacity
               style={styles.flex}
               activeOpacity={1}
@@ -512,9 +558,21 @@ export default function EditStudioScreen() {
         transparent
         animationType="fade"
         onRequestClose={() => setShowDeleteConfirm(false)}
+        accessibilityViewIsModal={true}
+        presentationStyle="overFullScreen"
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.deleteModalContent}>
+        <View 
+          style={styles.modalOverlay}
+          accessible={false}
+          importantForAccessibility="yes"
+          accessibilityElementsHidden={false}
+        >
+          <View 
+            style={styles.deleteModalContent}
+            accessibilityViewIsModal={true}
+            importantForAccessibility="yes"
+            accessible={true}
+          >
             <Text style={styles.deleteModalTitle}>Удалить профиль студии?</Text>
             <Text style={styles.deleteModalText}>
               Все созданные события и данные организации будут удалены безвозвратно.

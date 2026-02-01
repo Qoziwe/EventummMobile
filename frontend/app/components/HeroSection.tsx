@@ -314,10 +314,20 @@ export default function HeroSection({
         transparent
         animationType="none"
         onRequestClose={closeModal}
+        accessibilityViewIsModal={true}
+        presentationStyle="overFullScreen"
       >
-        <View style={styles.modalRoot}>
+        <View 
+          style={styles.modalRoot} 
+          accessible={false}
+          importantForAccessibility="yes"
+          accessibilityElementsHidden={false}
+        >
           <TouchableWithoutFeedback onPress={closeModal}>
-            <Animated.View style={[styles.modalOverlay, { opacity: fadeAnim }]} />
+            <Animated.View 
+              style={[styles.modalOverlay, { opacity: fadeAnim }]} 
+              accessible={false}
+            />
           </TouchableWithoutFeedback>
 
           <Animated.View
