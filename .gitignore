@@ -1,0 +1,76 @@
+# ===============================
+# Dependencies
+# ===============================
+node_modules/
+
+# ===============================
+# Expo
+# ===============================
+.expo/
+.expo-shared/
+web-build/
+
+# ===============================
+# React Native
+# ===============================
+ios/Pods/
+ios/build/
+android/.gradle/
+android/build/
+android/app/build/
+
+# Native configs generated locally
+*.keystore
+*.jks
+
+# ===============================
+# TypeScript
+# ===============================
+*.tsbuildinfo
+
+# ===============================
+# Logs
+# ===============================
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+expo-debug.log*
+
+# ===============================
+# Environment variables
+# ===============================
+.env
+.env.*
+!.env.example
+
+# ===============================
+# OS / Editor
+# ===============================
+.DS_Store
+Thumbs.db
+
+# VS Code
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# ===============================
+# Build / cache
+# ===============================
+dist/
+build/
+.cache/
+.tmp/
+.temp/
+
+# ===============================
+# Testing
+# ===============================
+coverage/
+
+# ===============================
+# Misc
+# ===============================
+*.log
+EventumMobileFlaskBack/serviceAccountKey.json
