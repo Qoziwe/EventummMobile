@@ -7,17 +7,17 @@ import {
   TouchableOpacity,
   StatusBar,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, borderRadius } from '../theme/colors';
 import { useNotificationStore } from '../store/notificationStore';
-import { useEventStore } from '../store/eventStore'; // Добавлен импорт
+import { useEventStore } from '../store/eventStore';
+import Header from '../components/Header'; // Импорт Header
 
 export default function NotificationsScreen() {
   const navigation = useNavigation<any>();
   const { notifications, fetchNotifications, markAsRead } = useNotificationStore();
-  const { events } = useEventStore(); // Получаем события
+  const { events } = useEventStore();
 
   useEffect(() => {
     fetchNotifications();
@@ -26,14 +26,10 @@ export default function NotificationsScreen() {
   const handleNotificationPress = (notification: any) => {
     markAsRead(notification.id);
     if (notification.relatedId) {
-      // Ищем полное событие по ID
       const targetEvent = events.find(e => e.id === notification.relatedId);
-
       if (targetEvent) {
-        // Передаем полный объект события (EventDetail без 's')
         navigation.navigate('EventDetail', { ...targetEvent });
       } else {
-        // Fallback если события нет в кэше
         navigation.navigate('EventDetail', { eventId: notification.relatedId });
       }
     }
@@ -42,6 +38,12 @@ export default function NotificationsScreen() {
   const handleMarkAllRead = () => {
     markAsRead();
   };
+
+  const renderMarkReadButton = () => (
+    <TouchableOpacity onPress={handleMarkAllRead} style={styles.headerActionBtn}>
+      <Ionicons name="checkmark-done-outline" size={24} color={colors.light.primary} />
+    </TouchableOpacity>
+  );
 
   const renderItem = ({ item }: { item: any }) => (
     <TouchableOpacity
@@ -72,21 +74,15 @@ export default function NotificationsScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <View style={styles.container}>
       <StatusBar barStyle="dark-content" />
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={colors.light.foreground} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Уведомления</Text>
-        <TouchableOpacity onPress={handleMarkAllRead}>
-          <Ionicons
-            name="checkmark-done-outline"
-            size={24}
-            color={colors.light.primary}
-          />
-        </TouchableOpacity>
-      </View>
+
+      <Header
+        title="Уведомления"
+        showBack={true}
+        onBackPress={() => navigation.goBack()}
+        rightElement={renderMarkReadButton()}
+      />
 
       <FlatList
         data={notifications}
@@ -105,22 +101,18 @@ export default function NotificationsScreen() {
           </View>
         }
       />
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.light.background },
-  header: {
-    flexDirection: 'row',
+  headerActionBtn: {
+    width: 36,
+    height: 36,
+    justifyContent: 'center',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.light.border,
   },
-  headerTitle: { fontSize: 18, fontWeight: '700', color: colors.light.foreground },
-  backButton: { padding: 4 },
   listContent: { padding: spacing.md },
   notificationItem: {
     flexDirection: 'row',

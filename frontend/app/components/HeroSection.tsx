@@ -461,10 +461,10 @@ export default function HeroSection({
 const styles = StyleSheet.create({
   container: {
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.lg, // Уменьшил с lg до md
+    paddingTop: spacing.lg,
     backgroundColor: colors.light.background,
   },
-  containerCompact: { paddingTop: spacing.md }, // Уменьшил
+  containerCompact: { paddingTop: spacing.md },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -475,10 +475,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     borderWidth: 1,
     borderColor: colors.light.border,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
+    boxShadow: '0px 2px 10px rgba(0, 0, 0, 0.05)',
     elevation: 2,
   },
   searchInput: {
@@ -488,7 +485,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   filtersWrapper: {
-    paddingVertical: spacing.md, // Уменьшил с lg до md
+    paddingVertical: spacing.md,
     gap: spacing.sm,
     paddingRight: spacing.xl,
   },
@@ -502,21 +499,13 @@ const styles = StyleSheet.create({
     borderWidth: 1.2,
     borderColor: colors.light.border,
     backgroundColor: colors.light.background,
-    // Тень по умолчанию как в DiscussionsScreen
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
+    boxShadow: '0px 1px 4px rgba(0, 0, 0, 0.05)',
     elevation: 1,
   },
   activeFilterChip: {
     borderColor: colors.light.primary,
     backgroundColor: colors.light.primary,
-    // Усиленная тень как в DiscussionsScreen для активных
-    shadowColor: colors.light.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
+    boxShadow: `0px 4px 8px rgba(0, 0, 0, 0.2)`,
     elevation: 3,
   },
   filterText: {
@@ -552,10 +541,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.lg,
     maxHeight: '70%',
     elevation: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.2,
-    shadowRadius: 15,
+    boxShadow: '0px 8px 15px rgba(0, 0, 0, 0.2)',
   },
   dateDropdown: { height: 440 },
   dropdownHeader: {

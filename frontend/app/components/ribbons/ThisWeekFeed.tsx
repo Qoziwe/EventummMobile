@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, borderRadius, typography } from '../../theme/colors';
+import EventPlaceholder from '../../assets/placeholder.jpg';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = width * 0.75;
@@ -54,7 +55,7 @@ export default function ThisWeekFeed({
         <Image
           source={
             !item.image || item.image === ''
-              ? { uri: 'https://via.placeholder.com/800x450?text=Event' }
+              ? EventPlaceholder
               : typeof item.image === 'string'
                 ? { uri: item.image }
                 : item.image

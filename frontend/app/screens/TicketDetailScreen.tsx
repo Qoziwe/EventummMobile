@@ -13,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, borderRadius, typography } from '../theme/colors';
+import EventPlaceholder from '../assets/placeholder.jpg';
 import { useUserStore } from '../store/userStore';
 
 const { width } = Dimensions.get('window');
@@ -50,7 +51,7 @@ export default function TicketDetailScreen() {
             <Image
               source={
                 !event.image || event.image === '' || typeof event.image !== 'string'
-                  ? { uri: 'https://via.placeholder.com/800x450?text=Event' }
+                  ? EventPlaceholder
                   : { uri: event.image }
               }
               style={styles.eventImage}
@@ -154,10 +155,7 @@ const styles = StyleSheet.create({
     borderColor: colors.light.border,
     overflow: 'hidden',
     elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
+    boxShadow: '0px 4px 10px rgba(0, 0, 0, 0.1)',
   },
   eventInfoSection: { padding: spacing.lg, flexDirection: 'row', gap: spacing.md },
   eventImage: { width: 80, height: 80, borderRadius: borderRadius.lg },

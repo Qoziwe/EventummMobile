@@ -36,6 +36,7 @@ export default function HomeScreen() {
   const [activeFilters, setActiveFilters] = useState<Record<string, string>>({});
   const [visiblePopularCount, setVisiblePopularCount] = useState(8);
   const [refreshing, setRefreshing] = useState(false);
+  const [homeSearchValue, setHomeSearchValue] = useState('');
 
   const userAge = useMemo(() => calculateUserAge(user.birthDate), [user.birthDate]);
 
@@ -44,6 +45,8 @@ export default function HomeScreen() {
     useCallback(() => {
       fetchEvents();
       fetchPosts();
+      // Сбрасываем локальный поиск при возврате на главный экран
+      setHomeSearchValue('');
     }, [])
   );
 
@@ -123,6 +126,14 @@ export default function HomeScreen() {
     }
   }
 
+  const handleSearchTrigger = (text: string) => {
+    setHomeSearchValue(text);
+    navigation.navigate('MainTabs', {
+      screen: 'Search',
+      params: { initialSearch: text },
+    });
+  };
+
   return (
     <View style={styles.screenWrapper}>
       <Header
@@ -150,6 +161,8 @@ export default function HomeScreen() {
         </View>
 
         <HeroSection
+          searchValue={homeSearchValue}
+          onSearchChange={handleSearchTrigger}
           onApplyFilters={f =>
             navigation.navigate('MainTabs', {
               screen: 'Search',
@@ -319,6 +332,8 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     borderWidth: 1,
     borderColor: colors.light.border,
+    boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.05)',
+    elevation: 2,
   },
   discussionHeader: {
     flexDirection: 'row',
@@ -355,6 +370,8 @@ const styles = StyleSheet.create({
     borderColor: colors.light.border,
     borderRadius: borderRadius.lg,
     backgroundColor: colors.light.card,
+    boxShadow: '0px 1px 3px rgba(0, 0, 0, 0.05)',
+    elevation: 1,
   },
   viewAllText: {
     fontSize: typography.sm,

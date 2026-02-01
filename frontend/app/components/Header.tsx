@@ -17,13 +17,14 @@ import { useNavigation } from '@react-navigation/native';
 import { colors, spacing, borderRadius, typography } from '../theme/colors';
 import { useUserStore } from '../store/userStore';
 import { useNotificationStore } from '../store/notificationStore';
-import { useEventStore } from '../store/eventStore'; // Добавлен импорт
+import { useEventStore } from '../store/eventStore';
 
 interface HeaderProps {
   showBack?: boolean;
   onBackPress?: () => void;
   title?: string;
   onProfilePress?: () => void;
+  rightElement?: React.ReactNode;
 }
 
 const CITIES = [
@@ -51,36 +52,25 @@ export default function Header({
   onBackPress,
   title,
   onProfilePress,
+  rightElement,
 }: HeaderProps) {
   const navigation = useNavigation<any>();
   const { user } = useUserStore();
-  const { events } = useEventStore(); // Получаем список событий
+  const { events } = useEventStore();
 
-  // Notification Store
-  const {
-    notifications,
-    unreadCount,
-    fetchNotifications,
-    markAsRead,
-    initializeSocket,
-    disconnectSocket,
-  } = useNotificationStore();
+  const { notifications, unreadCount, fetchNotifications, markAsRead, initializeSocket } =
+    useNotificationStore();
 
   const [selectedCity, setSelectedCity] = useState('Алматы');
   const [showCityDropdown, setShowCityDropdown] = useState(false);
   const [showNotificationsModal, setShowNotificationsModal] = useState(false);
   const dropdownRef = useRef<View>(null);
 
-  // Initialize socket and fetch notifications when user is available
   useEffect(() => {
     if (user && user.id) {
       initializeSocket(user.id);
       fetchNotifications();
     }
-    return () => {
-      // Don't disconnect here strictly if we want background notifications,
-      // but usually good practice to clean up or manage in root
-    };
   }, [user?.id]);
 
   const handleCitySelect = (city: string) => {
@@ -92,7 +82,22 @@ export default function Header({
     if (onProfilePress) {
       onProfilePress();
     } else {
-      navigation.navigate('Profile');
+      // Проверяем, находимся ли мы уже на экране профиля
+      const currentRoute = navigation.getState()?.routes?.[navigation.getState()?.index];
+
+      if (currentRoute?.name === 'MainTabs') {
+        // Если уже на табах, переключаемся на таб Profile
+        navigation.navigate('MainTabs', { screen: 'Profile' });
+      } else {
+        // Если не на табах (например, в модальном стеке),
+        // то переходим на табы и устанавливаем активным таб Profile
+        navigation.navigate('MainTabs', {
+          screen: 'Profile',
+          params: {
+            screen: 'ProfileMain',
+          },
+        });
+      }
     }
   };
 
@@ -101,14 +106,10 @@ export default function Header({
     setShowNotificationsModal(false);
 
     if (notification.relatedId) {
-      // Ищем полное событие в store по ID
       const targetEvent = events.find(e => e.id === notification.relatedId);
-
       if (targetEvent) {
-        // Если событие найдено, передаем ВЕСЬ объект (как в поиске)
         navigation.navigate('EventDetail', { ...targetEvent });
       } else {
-        // Если вдруг не найдено, передаем хотя бы ID (fallback)
         navigation.navigate('EventDetail', { eventId: notification.relatedId });
       }
     }
@@ -116,8 +117,6 @@ export default function Header({
 
   const handleOpenNotifications = () => {
     setShowNotificationsModal(true);
-    // Optionally mark all displayed as read immediately, or waiting for user interaction
-    // markAsRead();
   };
 
   const renderCityItem = ({ item }: { item: { id: string; name: string } }) => (
@@ -175,13 +174,30 @@ export default function Header({
     <>
       <SafeAreaView edges={['top']} style={styles.safeArea}>
         <View style={styles.container}>
+          {/* Центральная секция (Заголовок) - рендерим первой, чтобы была ниже по слоям */}
+          {title && (
+            <View style={styles.centerSection}>
+              <Text style={styles.headerTitle} numberOfLines={1}>
+                {title}
+              </Text>
+            </View>
+          )}
+
+          {/* Левая секция */}
           <View style={styles.leftSection}>
             {showBack ? (
-              <TouchableOpacity onPress={onBackPress} style={styles.backButton}>
+              <TouchableOpacity
+                onPress={onBackPress || (() => navigation.goBack())}
+                style={styles.backButton}
+                hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+              >
                 <Ionicons name="arrow-back" size={24} color={colors.light.foreground} />
               </TouchableOpacity>
             ) : (
-              <TouchableOpacity style={styles.logoContainer}>
+              <TouchableOpacity
+                style={styles.logoContainer}
+                onPress={() => navigation.navigate('MainTabs', { screen: 'Home' })}
+              >
                 <View style={styles.logoIcon}>
                   <Ionicons
                     name="flash"
@@ -189,13 +205,11 @@ export default function Header({
                     color={colors.light.primaryForeground}
                   />
                 </View>
-                <Text style={styles.logoText}>Eventum</Text>
+                {!title && <Text style={styles.logoText}>Eventum</Text>}
               </TouchableOpacity>
             )}
 
-            {title && <Text style={styles.headerTitle}>{title}</Text>}
-
-            {!showBack && (
+            {!showBack && !title && (
               <View ref={dropdownRef}>
                 <TouchableOpacity
                   style={styles.locationButton}
@@ -212,8 +226,15 @@ export default function Header({
             )}
           </View>
 
+          {/* Правая секция */}
           <View style={styles.rightSection}>
-            <TouchableOpacity style={styles.iconButton} onPress={handleOpenNotifications}>
+            {rightElement}
+
+            <TouchableOpacity
+              style={styles.iconButton}
+              onPress={handleOpenNotifications}
+              hitSlop={{ top: 10, bottom: 10, left: 5, right: 5 }}
+            >
               <Ionicons
                 name="notifications-outline"
                 size={22}
@@ -228,7 +249,11 @@ export default function Header({
               )}
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.avatarButton} onPress={handleAvatarPress}>
+            <TouchableOpacity
+              style={styles.avatarButton}
+              onPress={handleAvatarPress}
+              hitSlop={{ top: 10, bottom: 10, left: 5, right: 15 }}
+            >
               <View style={styles.avatar}>
                 {user.avatarUrl ? (
                   <Image source={{ uri: user.avatarUrl }} style={styles.avatarImage} />
@@ -241,7 +266,6 @@ export default function Header({
         </View>
       </SafeAreaView>
 
-      {/* City Modal */}
       <Modal
         visible={showCityDropdown}
         transparent={true}
@@ -266,7 +290,6 @@ export default function Header({
         </TouchableWithoutFeedback>
       </Modal>
 
-      {/* Notifications Modal */}
       <Modal
         visible={showNotificationsModal}
         transparent={true}
@@ -325,16 +348,41 @@ export default function Header({
 const styles = StyleSheet.create({
   safeArea: { backgroundColor: colors.light.background },
   container: {
+    height: 56,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: colors.light.border,
   },
-  leftSection: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  rightSection: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  leftSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    zIndex: 10,
+    minWidth: 40,
+  },
+  centerSection: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1,
+    // pointerEvents перенесен в стили для устранения предупреждения react-native-web
+    pointerEvents: 'box-none',
+  },
+  rightSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    justifyContent: 'flex-end',
+    zIndex: 10,
+    minWidth: 40,
+  },
   logoContainer: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   logoIcon: {
     width: 32,
@@ -351,8 +399,10 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: typography.lg,
-    fontWeight: '600',
+    fontWeight: '700',
     color: colors.light.foreground,
+    maxWidth: '55%',
+    textAlign: 'center',
   },
   backButton: { padding: spacing.xs },
   locationButton: {
@@ -420,23 +470,17 @@ const styles = StyleSheet.create({
     backgroundColor: colors.light.background,
     borderRadius: borderRadius.lg,
     paddingVertical: spacing.md,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
+    boxShadow: '0px 2px 3.84px rgba(0, 0, 0, 0.25)',
     elevation: 5,
   },
   notificationDropdownContainer: {
     backgroundColor: colors.light.background,
     borderRadius: borderRadius.lg,
     paddingBottom: spacing.sm,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
+    boxShadow: '0px 2px 3.84px rgba(0, 0, 0, 0.25)',
     elevation: 5,
     maxHeight: 500,
-    marginTop: -20, // Adjust position slightly up if needed
+    marginTop: -20,
   },
   dropdownTitle: {
     fontSize: typography.base,
@@ -503,7 +547,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   unreadNotification: {
-    backgroundColor: '#F0F9FF', // Light blue background for unread
+    backgroundColor: '#F0F9FF',
   },
   notifIconContainer: {
     width: 32,

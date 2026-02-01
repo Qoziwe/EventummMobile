@@ -222,10 +222,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     borderWidth: 1,
     borderColor: colors.light.border,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
+    boxShadow: '0px 2px 10px rgba(0, 0, 0, 0.05)',
     elevation: 2,
   },
   searchInput: {
@@ -256,10 +253,7 @@ const styles = StyleSheet.create({
   categoryChipActive: {
     borderColor: colors.light.primary,
     backgroundColor: colors.light.primary,
-    shadowColor: colors.light.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
+    boxShadow: `0px 4px 8px ${colors.light.primary}33`,
     elevation: 3,
   },
   categoryLabel: {

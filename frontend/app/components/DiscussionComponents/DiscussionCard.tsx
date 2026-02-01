@@ -71,6 +71,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.light.border,
     marginBottom: spacing.md,
+    boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.05)',
+    elevation: 2,
   },
   headerRow: {
     flexDirection: 'row',

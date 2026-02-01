@@ -24,8 +24,8 @@ import { useToast } from '../components/ToastProvider';
 import { apiClient } from '../api/apiClient';
 
 const { width, height: SCREEN_HEIGHT } = Dimensions.get('window');
-const PLACEHOLDER_IMAGE = 'https://via.placeholder.com/800x450?text=Event+Detail';
-const ORGANIZER_PLACEHOLDER = 'https://via.placeholder.com/100';
+import EventPlaceholder from '../assets/placeholder.jpg';
+import AvatarPlaceholder from '../assets/lackofavatar.png';
 
 export default function EventDetailScreen() {
   const navigation = useNavigation<any>();
@@ -91,7 +91,7 @@ export default function EventDetailScreen() {
     fullDescription:
       params.fullDescription || params.description || 'Описание события скоро появится.',
     organizerName: params.organizerName || 'Организатор',
-    organizerAvatar: params.organizerAvatar || ORGANIZER_PLACEHOLDER,
+    organizerAvatar: params.organizerAvatar || AvatarPlaceholder,
     organizerId: params.organizerId || '',
     timeRange: params.timeRange || 'Время не указано',
     ageLimit: params.ageLimit || 0,
@@ -196,13 +196,19 @@ export default function EventDetailScreen() {
   };
 
   const imageSource =
-    imageError || !event.image ? { uri: PLACEHOLDER_IMAGE } : { uri: event.image };
+    imageError || !event.image
+      ? EventPlaceholder
+      : typeof event.image === 'string'
+        ? { uri: event.image }
+        : event.image;
 
   // Logic for Organizer Avatar with Error Handling
   const organizerAvatarSource =
     organizerAvatarError || !event.organizerAvatar
-      ? { uri: ORGANIZER_PLACEHOLDER }
-      : { uri: event.organizerAvatar };
+      ? AvatarPlaceholder
+      : typeof event.organizerAvatar === 'string'
+        ? { uri: event.organizerAvatar }
+        : event.organizerAvatar;
 
   const backdropOpacity = modalAnim.interpolate({
     inputRange: [0, 1],

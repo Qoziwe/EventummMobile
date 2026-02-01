@@ -3,11 +3,11 @@ import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
   ScrollView,
   StatusBar,
   Keyboard,
   RefreshControl,
+  TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
@@ -16,6 +16,7 @@ import { colors, spacing, borderRadius, typography } from '../theme/colors';
 
 import HeroSection from '../components/HeroSection';
 import EventCard from '../components/EventCard';
+import Header from '../components/Header'; // Импорт Header
 import { useEventStore } from '../store/eventStore';
 import { useUserStore } from '../store/userStore';
 import { calculateUserAge } from '../utils/dateUtils';
@@ -32,7 +33,6 @@ export default function SearchScreen() {
 
   const userAge = useMemo(() => calculateUserAge(user.birthDate), [user.birthDate]);
 
-  // Авто-обновление при фокусе на экран
   useFocusEffect(
     useCallback(() => {
       fetchEvents();
@@ -51,6 +51,13 @@ export default function SearchScreen() {
       navigation.setParams({ incomingFilters: undefined });
     }
   }, [route.params?.incomingFilters]);
+
+  useEffect(() => {
+    if (route.params?.initialSearch !== undefined) {
+      setSearchValue(route.params.initialSearch);
+      navigation.setParams({ initialSearch: undefined });
+    }
+  }, [route.params?.initialSearch]);
 
   const isSearching = searchValue.length > 0 || Object.keys(currentFilters).length > 0;
 
@@ -133,16 +140,10 @@ export default function SearchScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.fullContainer} edges={['top']}>
+    <View style={styles.fullContainer}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.light.background} />
 
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color={colors.light.foreground} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Поиск</Text>
-        <View style={styles.headerButtonRight} />
-      </View>
+      <Header title="Поиск" showBack={true} onBackPress={() => navigation.goBack()} />
 
       <ScrollView
         style={styles.container}
@@ -211,38 +212,16 @@ export default function SearchScreen() {
         </View>
         <View style={{ height: 60 }} />
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   fullContainer: { flex: 1, backgroundColor: colors.light.background },
-  header: {
-    height: 56,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.light.border,
-    backgroundColor: colors.light.background,
-  },
-  backBtn: { width: 40, height: 40, justifyContent: 'center' },
-  headerButtonRight: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'flex-end',
-  },
-  headerTitle: {
-    fontSize: typography.xl,
-    fontWeight: '700',
-    color: colors.light.foreground,
-  },
   container: { flex: 1 },
   listContent: {
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.xs, // Уменьшил отступ сверху (было sm)
+    paddingTop: spacing.xs,
     paddingBottom: 40,
   },
   resHead: {
@@ -262,8 +241,6 @@ const styles = StyleSheet.create({
     fontSize: typography.base,
   },
   eventCardOverride: { width: '100%', marginBottom: spacing.md },
-
-  // Empty State Styles
   emptyState: {
     alignItems: 'center',
     marginTop: 60,

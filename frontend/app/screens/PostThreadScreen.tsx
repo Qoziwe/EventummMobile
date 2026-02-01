@@ -10,7 +10,6 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, borderRadius, typography } from '../theme/colors';
@@ -19,9 +18,10 @@ import { useUserStore } from '../store/userStore';
 import { useToast } from '../components/ToastProvider';
 import { calculateUserAge } from '../utils/dateUtils';
 import { sanitizeText } from '../utils/security';
+import Header from '../components/Header'; // Импорт Header
 
 export default function PostThreadScreen() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const { postId } = route.params || {};
   const { showToast } = useToast();
@@ -60,31 +60,19 @@ export default function PostThreadScreen() {
 
   if (!post) {
     return (
-      <SafeAreaView style={styles.fullContainer}>
-        <View style={styles.header}>
-          <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={24} color={colors.light.foreground} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Ошибка</Text>
-          <View style={styles.headerBtn} />
-        </View>
+      <View style={styles.fullContainer}>
+        <Header title="Ошибка" showBack={true} />
         <View style={styles.centered}>
           <Text style={styles.errorText}>Обсуждение не найдено</Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   if (!hasAccess) {
     return (
-      <SafeAreaView style={styles.fullContainer}>
-        <View style={styles.header}>
-          <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={24} color={colors.light.foreground} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Доступ ограничен</Text>
-          <View style={styles.headerBtn} />
-        </View>
+      <View style={styles.fullContainer}>
+        <Header title="Доступ ограничен" showBack={true} />
         <View style={styles.centered}>
           <Ionicons name="lock-closed" size={80} color={colors.light.mutedForeground} />
           <Text style={styles.deniedTitle}>Вам меньше {post.ageLimit} лет</Text>
@@ -95,7 +83,7 @@ export default function PostThreadScreen() {
             <Text style={styles.backButtonText}>Вернуться назад</Text>
           </TouchableOpacity>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
@@ -116,8 +104,7 @@ export default function PostThreadScreen() {
 
     try {
       const sanitizedComment = sanitizeText(commentText.trim());
-      const currentText = commentText.trim();
-      setCommentText(''); // Мгновенная очистка для UX
+      setCommentText('');
       await addComment(postId, user.id, user.name, sanitizedComment);
       showToast({ message: 'Комментарий добавлен', type: 'success' });
     } catch (error: any) {
@@ -131,16 +118,14 @@ export default function PostThreadScreen() {
   const userVote = post.votedUsers?.[user.id];
 
   return (
-    <SafeAreaView style={styles.fullContainer} edges={['top']}>
+    <View style={styles.fullContainer}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.light.background} />
 
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color={colors.light.foreground} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Обсуждение</Text>
-        <View style={styles.headerBtn} />
-      </View>
+      <Header
+        title="Обсуждение"
+        showBack={true}
+        onBackPress={() => navigation.goBack()}
+      />
 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -247,23 +232,12 @@ export default function PostThreadScreen() {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   fullContainer: { flex: 1, backgroundColor: colors.light.background },
-  header: {
-    height: 56,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.light.border,
-  },
-  headerBtn: { width: 40, height: 40, justifyContent: 'center' },
-  headerTitle: { fontSize: 18, fontWeight: '700', color: colors.light.foreground },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 },
   errorText: { color: colors.light.mutedForeground, fontSize: 16 },
   deniedTitle: {

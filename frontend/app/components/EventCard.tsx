@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, ViewStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, borderRadius, typography } from '../theme/colors';
+import EventPlaceholder from '../assets/placeholder.jpg';
 
 export interface EventItem {
   id: string;
@@ -21,12 +22,9 @@ interface EventCardProps extends EventItem {
   style?: ViewStyle;
 }
 
-// Функция для форматирования даты на русском
 const formatRussianDate = (dateString: string) => {
   if (!dateString) return '';
-
   try {
-    // Убираем английские названия месяцев и заменяем на русские
     const monthsEN = [
       'Jan',
       'Feb',
@@ -55,47 +53,28 @@ const formatRussianDate = (dateString: string) => {
       'ноя',
       'дек',
     ];
-
     let formattedDate = dateString;
     monthsEN.forEach((monthEN, index) => {
       formattedDate = formattedDate.replace(monthEN, monthsRU[index]);
     });
-
     return formattedDate;
   } catch (error) {
     return dateString;
   }
 };
 
-// Функция для форматирования цены
 const formatPrice = (price: string | number | undefined, priceValue?: number) => {
   if (priceValue === 0 || priceValue === undefined) {
-    // Проверяем строковую цену
     if (
       typeof price === 'string' &&
-      (price.toLowerCase().includes('бесплат') ||
-        price === '0' ||
-        price === '0 ₸' ||
-        price === '0 ₽' ||
-        price === '0$')
+      (price.toLowerCase().includes('бесплат') || price === '0' || price === '0 ₸')
     ) {
-      return 'Бесплатно';
-    }
-    if (typeof price === 'number' && price === 0) {
       return 'Бесплатно';
     }
     return 'Бесплатно';
   }
-
-  if (typeof price === 'string' && price.trim() !== '') {
-    return price;
-  }
-
-  if (typeof priceValue === 'number') {
-    if (priceValue === 0) return 'Бесплатно';
-    return `${priceValue} ₸`;
-  }
-
+  if (typeof price === 'string' && price.trim() !== '') return price;
+  if (typeof priceValue === 'number') return `${priceValue} ₸`;
   return 'Бесплатно';
 };
 
@@ -115,19 +94,13 @@ export default function EventCard({
   const [imageError, setImageError] = useState(false);
   const source =
     imageError || !image || image === ''
-      ? { uri: 'https://via.placeholder.com/800x450?text=Event' }
+      ? EventPlaceholder
       : typeof image === 'string'
         ? { uri: image }
         : image;
 
-  // Форматируем дату на русском
   const formattedDate = formatRussianDate(date);
-  // Форматируем цену
   const formattedPrice = formatPrice(price, priceValue);
-
-  // ВНИМАНИЕ: НИКАКОЙ ОТПРАВКИ ПРОСМОТРА ЗДЕСЬ!
-  // Просмотры должны отправляться только в EventDetailScreen.tsx
-  // при открытии страницы деталей события
 
   return (
     <TouchableOpacity
@@ -212,6 +185,8 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: colors.light.border,
+    boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.05)',
+    elevation: 2,
   },
   imageContainer: { height: 180 },
   image: { width: '100%', height: '100%' },
@@ -230,11 +205,7 @@ const styles = StyleSheet.create({
     minWidth: 32,
     alignItems: 'center',
   },
-  ageText: {
-    fontSize: 10,
-    fontWeight: '900',
-    color: '#fff',
-  },
+  ageText: { fontSize: 10, fontWeight: '900', color: '#fff' },
   categoryBadge: {
     backgroundColor: 'rgba(255,255,255,0.9)',
     paddingHorizontal: 8,
@@ -259,16 +230,8 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: borderRadius.lg,
   },
-  freePriceTag: {
-    backgroundColor: colors.light.primary, // Другой цвет для бесплатных мероприятий
-  },
-  priceText: {
-    color: colors.light.background,
-    fontWeight: '700',
-    fontSize: 12,
-  },
-  freePriceText: {
-    color: '#fff', // Белый текст для бесплатных мероприятий
-  },
+  freePriceTag: { backgroundColor: colors.light.primary },
+  priceText: { color: colors.light.background, fontWeight: '700', fontSize: 12 },
+  freePriceText: { color: '#fff' },
   statsText: { fontSize: 11, color: colors.light.mutedForeground },
 });

@@ -8,6 +8,7 @@ import {
   Dimensions,
   StyleSheet,
 } from 'react-native';
+import EventPlaceholder from '../../assets/placeholder.jpg';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = width * 0.75;
@@ -39,7 +40,7 @@ export const CustomPeriodFeed: React.FC<CustomPeriodFeedProps> = ({
         <Image
           source={
             !item.image || item.image === ''
-              ? { uri: 'https://via.placeholder.com/800x450?text=Event' }
+              ? EventPlaceholder
               : typeof item.image === 'string'
                 ? { uri: item.image }
                 : item.image

@@ -9,7 +9,6 @@ import {
   Modal,
   Image,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { colors, spacing, borderRadius, typography } from '../theme/colors';
@@ -18,6 +17,7 @@ import { useEventStore } from '../store/eventStore';
 import { useDiscussionStore } from '../store/discussionStore';
 import { useToast } from '../components/ToastProvider';
 
+import Header from '../components/Header'; // Импорт Header
 import FavoritesList from '../components/ProfileComponents/FavoritesList';
 import TicketsList from '../components/ProfileComponents/TicketsList';
 
@@ -45,7 +45,6 @@ export default function ProfileScreen() {
     purchasedTickets,
   } = user;
 
-  // Вычисляем количество обсуждений, с которыми взаимодействовал пользователь (автор или голосовал)
   const discussionsCount = useMemo(() => {
     if (!posts) return 0;
     return posts.filter(p => {
@@ -115,26 +114,13 @@ export default function ProfileScreen() {
       icon: 'chatbubbles-outline',
       screen: 'MyDiscussions',
     },
-    // { id: 'settings', title: 'Настройки', icon: 'settings-outline', screen: 'Settings' },
   ];
 
   return (
-    <SafeAreaView style={styles.fullContainer} edges={['top']}>
+    <View style={styles.fullContainer}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.light.background} />
 
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color={colors.light.foreground} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Профиль</Text>
-        {/* <TouchableOpacity
-          style={styles.headerBtn}
-          onPress={() => navigation.navigate('Settings')}
-        >
-          <Ionicons name="settings-outline" size={24} color={colors.light.foreground} />
-        </TouchableOpacity> */}
-        <View style={styles.headerBtn} />
-      </View>
+      <Header title="Профиль" showBack={true} onBackPress={() => navigation.goBack()} />
 
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
         <View style={styles.profileHeaderContainer}>
@@ -327,27 +313,12 @@ export default function ProfileScreen() {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   fullContainer: { flex: 1, backgroundColor: colors.light.background },
-  header: {
-    height: 56,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.light.border,
-  },
-  headerBtn: { width: 40, height: 40, justifyContent: 'center' },
-  headerTitle: {
-    fontSize: typography.xl,
-    fontWeight: '700',
-    color: colors.light.foreground,
-  },
   container: { flex: 1 },
   profileHeaderContainer: { paddingHorizontal: spacing.lg, paddingTop: spacing.md },
   topRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },

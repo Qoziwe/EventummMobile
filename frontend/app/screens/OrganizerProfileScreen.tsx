@@ -8,7 +8,6 @@ import {
   StatusBar,
   Image,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { colors, spacing, borderRadius, typography } from '../theme/colors';
@@ -16,6 +15,7 @@ import { useUserStore } from '../store/userStore';
 import { useEventStore } from '../store/eventStore';
 import { useToast } from '../components/ToastProvider';
 import EventCard from '../components/EventCard';
+import Header from '../components/Header'; // Импорт Header
 
 export default function OrganizerProfileScreen() {
   const navigation = useNavigation<any>();
@@ -101,32 +101,26 @@ export default function OrganizerProfileScreen() {
     },
   ];
 
+  const renderSettingsButton = () =>
+    isOwnProfile ? (
+      <TouchableOpacity
+        style={styles.headerActionBtn}
+        onPress={() => navigation.navigate('Settings')}
+      >
+        <Ionicons name="settings-outline" size={24} color={colors.light.foreground} />
+      </TouchableOpacity>
+    ) : null;
+
   return (
-    <SafeAreaView style={styles.fullContainer} edges={['top']}>
+    <View style={styles.fullContainer}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.light.background} />
 
-      <View style={styles.header}>
-        <View style={styles.headerBtn}>
-          {(!isOwnProfile || navigation.canGoBack()) && (
-            <TouchableOpacity onPress={() => navigation.goBack()}>
-              <Ionicons name="arrow-back" size={24} color={colors.light.foreground} />
-            </TouchableOpacity>
-          )}
-        </View>
-        <Text style={styles.headerTitle}>
-          {isOwnProfile ? 'Creator Studio' : 'Профиль автора'}
-        </Text>
-        {isOwnProfile ? (
-          <TouchableOpacity
-            style={styles.headerBtn}
-            onPress={() => navigation.navigate('Settings')}
-          >
-            <Ionicons name="settings-outline" size={24} color={colors.light.foreground} />
-          </TouchableOpacity>
-        ) : (
-          <View style={styles.headerBtn} />
-        )}
-      </View>
+      <Header
+        title={isOwnProfile ? 'Creator Studio' : 'Профиль автора'}
+        showBack={true}
+        onBackPress={() => navigation.goBack()}
+        rightElement={renderSettingsButton()}
+      />
 
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
         <View style={styles.profileHeaderContainer}>
@@ -307,46 +301,21 @@ export default function OrganizerProfileScreen() {
         )}
         <View style={{ height: 40 }} />
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  fullContainer: {
-    flex: 1,
-    backgroundColor: colors.light.background,
-  },
-  header: {
-    height: 56,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.light.border,
-  },
-  headerBtn: {
-    width: 40,
-    height: 40,
+  fullContainer: { flex: 1, backgroundColor: colors.light.background },
+  container: { flex: 1 },
+  headerActionBtn: {
+    width: 36,
+    height: 36,
     justifyContent: 'center',
-  },
-  headerTitle: {
-    fontSize: typography.lg,
-    fontWeight: '700',
-    color: colors.light.foreground,
-  },
-  container: {
-    flex: 1,
-  },
-  profileHeaderContainer: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-  },
-  topRow: {
-    flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
   },
+  profileHeaderContainer: { paddingHorizontal: spacing.lg, paddingTop: spacing.md },
+  topRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   avatar: {
     width: 64,
     height: 64,
@@ -356,46 +325,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     overflow: 'hidden',
   },
-  avatarImage: {
-    width: '100%',
-    height: '100%',
-  },
-  avatarText: {
-    fontSize: 24,
-    fontWeight: '700',
-  },
-  infoColumn: {
-    flex: 1,
-  },
-  nameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  name: {
-    fontSize: 18,
-    fontWeight: '700',
-  },
+  avatarImage: { width: '100%', height: '100%' },
+  avatarText: { fontSize: 24, fontWeight: '700' },
+  infoColumn: { flex: 1 },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  name: { fontSize: 18, fontWeight: '700' },
   organizerBadge: {
     backgroundColor: colors.light.primary,
     paddingHorizontal: 4,
     paddingVertical: 1,
     borderRadius: 4,
   },
-  organizerBadgeText: {
-    color: '#fff',
-    fontSize: 9,
-    fontWeight: '800',
-  },
-  email: {
-    color: colors.light.mutedForeground,
-    fontSize: 13,
-    marginTop: 1,
-  },
-  role: {
-    color: colors.light.mutedForeground,
-    fontSize: 11,
-  },
+  organizerBadgeText: { color: '#fff', fontSize: 9, fontWeight: '800' },
+  email: { color: colors.light.mutedForeground, fontSize: 13, marginTop: 1 },
+  role: { color: colors.light.mutedForeground, fontSize: 11 },
   editButton: {
     marginTop: spacing.md,
     padding: 10,
@@ -404,10 +347,7 @@ const styles = StyleSheet.create({
     borderColor: colors.light.border,
     alignItems: 'center',
   },
-  editButtonText: {
-    fontWeight: '700',
-    fontSize: 14,
-  },
+  editButtonText: { fontWeight: '700', fontSize: 14 },
   followBtn: {
     marginTop: spacing.md,
     padding: 12,
@@ -423,14 +363,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.light.border,
   },
-  followBtnText: {
-    color: colors.light.background,
-    fontWeight: '700',
-    fontSize: 14,
-  },
-  followBtnTextActive: {
-    color: colors.light.foreground,
-  },
+  followBtnText: { color: colors.light.background, fontWeight: '700', fontSize: 14 },
+  followBtnTextActive: { color: colors.light.foreground },
   statsGrid: {
     flexDirection: 'row',
     paddingHorizontal: spacing.lg,
@@ -446,28 +380,15 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.light.border,
   },
-  statValue: {
-    fontSize: 16,
-    fontWeight: '700',
-    marginTop: 4,
-  },
-  statLabel: {
-    fontSize: 11,
-    color: colors.light.mutedForeground,
-  },
-  toolHeader: {
-    paddingHorizontal: spacing.lg,
-    marginBottom: 4,
-  },
+  statValue: { fontSize: 16, fontWeight: '700', marginTop: 4 },
+  statLabel: { fontSize: 11, color: colors.light.mutedForeground },
+  toolHeader: { paddingHorizontal: spacing.lg, marginBottom: 4 },
   publicationsHeader: {
     paddingHorizontal: spacing.lg,
     marginTop: spacing.lg,
     marginBottom: 8,
   },
-  sectionHeaderTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-  },
+  sectionHeaderTitle: { fontSize: 16, fontWeight: '700' },
   sectionsContainer: {
     marginHorizontal: spacing.lg,
     backgroundColor: colors.light.card,
@@ -483,17 +404,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.light.border,
   },
-  sectionIconContainer: {
-    width: 28,
-  },
-  menuItemText: {
-    flex: 1,
-    fontWeight: '600',
-    fontSize: 14,
-  },
-  eventsList: {
-    paddingHorizontal: spacing.lg,
-  },
+  sectionIconContainer: { width: 28 },
+  menuItemText: { flex: 1, fontWeight: '600', fontSize: 14 },
+  eventsList: { paddingHorizontal: spacing.lg },
   eventWrapper: {
     marginBottom: spacing.md,
     backgroundColor: colors.light.card,
@@ -509,39 +422,12 @@ const styles = StyleSheet.create({
     padding: 10,
     backgroundColor: `${colors.light.primary}05`,
   },
-  miniStat: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  miniStatText: {
-    fontSize: 11,
-    color: colors.light.mutedForeground,
-  },
-  editIconBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  editText: {
-    fontSize: 11,
-    color: colors.light.primary,
-    fontWeight: '700',
-  },
-  emptyState: {
-    padding: 30,
-    alignItems: 'center',
-  },
-  emptyText: {
-    color: colors.light.mutedForeground,
-    fontSize: 13,
-  },
-  resetTrigger: {
-    marginTop: 30,
-    alignItems: 'center',
-    opacity: 0.15,
-  },
-  resetText: {
-    fontSize: 9,
-  },
+  miniStat: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  miniStatText: { fontSize: 11, color: colors.light.mutedForeground },
+  editIconBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  editText: { fontSize: 11, color: colors.light.primary, fontWeight: '700' },
+  emptyState: { padding: 30, alignItems: 'center' },
+  emptyText: { color: colors.light.mutedForeground, fontSize: 13 },
+  resetTrigger: { marginTop: 30, alignItems: 'center', opacity: 0.15 },
+  resetText: { fontSize: 9 },
 });

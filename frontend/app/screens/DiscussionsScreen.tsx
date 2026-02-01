@@ -11,12 +11,12 @@ import {
   RefreshControl,
   Keyboard,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 
 import { colors, spacing, borderRadius, typography } from '../theme/colors';
 import DiscussionCard from '../components/DiscussionComponents/DiscussionCard';
+import Header from '../components/Header'; // Импорт Header
 import { useDiscussionStore } from '../store/discussionStore';
 import { useUserStore } from '../store/userStore';
 import { DISCUSSION_CATEGORIES } from '../data/discussionMockData';
@@ -35,7 +35,6 @@ export default function DiscussionsScreen() {
   const userAge = useMemo(() => calculateUserAge(user.birthDate), [user.birthDate]);
   const categories = DISCUSSION_CATEGORIES || [];
 
-  // Авто-обновление при фокусе на экран
   useFocusEffect(
     useCallback(() => {
       fetchPosts();
@@ -71,22 +70,25 @@ export default function DiscussionsScreen() {
     Keyboard.dismiss();
   };
 
+  const renderAddButton = () => (
+    <TouchableOpacity
+      style={styles.headerActionBtn}
+      onPress={() => navigation.navigate('CreateDiscussion')}
+    >
+      <Ionicons name="add" size={28} color={colors.light.foreground} />
+    </TouchableOpacity>
+  );
+
   return (
-    <SafeAreaView style={styles.fullContainer} edges={['top']}>
+    <View style={styles.fullContainer}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.light.background} />
 
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color={colors.light.foreground} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Обсуждения</Text>
-        <TouchableOpacity
-          style={styles.headerButtonRight}
-          onPress={() => navigation.navigate('CreateDiscussion')}
-        >
-          <Ionicons name="add" size={28} color={colors.light.foreground} />
-        </TouchableOpacity>
-      </View>
+      <Header
+        title="Обсуждения"
+        showBack={true}
+        onBackPress={() => navigation.goBack()}
+        rightElement={renderAddButton()}
+      />
 
       <ScrollView
         style={styles.container}
@@ -195,35 +197,19 @@ export default function DiscussionsScreen() {
         </View>
         <View style={{ height: 60 }} />
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   fullContainer: { flex: 1, backgroundColor: colors.light.background },
-  header: {
-    height: 56,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.light.border,
-    backgroundColor: colors.light.background,
-  },
-  backBtn: { width: 40, height: 40, justifyContent: 'center' },
-  headerButtonRight: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'flex-end',
-  },
-  headerTitle: {
-    fontSize: typography.xl,
-    fontWeight: '700',
-    color: colors.light.foreground,
-  },
   container: { flex: 1 },
+  headerActionBtn: {
+    width: 36,
+    height: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   searchWrapper: { paddingHorizontal: spacing.lg, paddingTop: spacing.lg },
   searchContainer: {
     flexDirection: 'row',
@@ -235,10 +221,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     borderWidth: 1,
     borderColor: colors.light.border,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
+    boxShadow: '0px 2px 10px rgba(0, 0, 0, 0.05)',
     elevation: 2,
   },
   searchInput: {
@@ -270,10 +253,7 @@ const styles = StyleSheet.create({
   categoryChipActive: {
     borderColor: colors.light.primary,
     backgroundColor: colors.light.primary,
-    shadowColor: colors.light.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
+    boxShadow: `0px 4px 8px ${colors.light.primary}33`,
     elevation: 3,
   },
   categoryLabel: {
@@ -287,7 +267,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.xs, // Added to increase gap between filters and title
+    paddingTop: spacing.xs,
     paddingBottom: 40,
   },
   resHead: {
