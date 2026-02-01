@@ -160,53 +160,54 @@ export default function CreateEventScreen() {
       });
 
       if (!result.canceled) {
-        setIsUploading(true);
-        const asset = result.assets[0];
-        const uri = asset.uri;
-        const formData = new FormData();
-
-        // --- ИСПРАВЛЕНИЕ: Гарантируем корректное имя файла с расширением ---
-        let filename = uri.split('/').pop();
-
-        // Если имя файла отсутствует или не содержит точку (часто в Web blob:...),
-        // принудительно добавляем расширение .jpg, чтобы бэкенд пропустил файл.
-        if (!filename || !filename.includes('.')) {
-          filename = `image_${Date.now()}.jpg`;
-        }
-
-        // Определяем mime type на основе расширения
-        const match = /\.(\w+)$/.exec(filename);
-        const type = match ? `image/${match[1]}` : `image/jpeg`;
-
-        if (Platform.OS === 'web') {
-          // ДЛЯ WEB: Конвертируем URI в Blob и передаем имя файла
-          const response = await fetch(uri);
-          const blob = await response.blob();
-          formData.append('image', blob, filename);
-        } else {
-          // ДЛЯ NATIVE
-          formData.append('image', {
-            uri: Platform.OS === 'android' ? uri : uri.replace('file://', ''),
-            name: filename,
-            type,
-          } as any);
-        }
-
-        const res = await apiClient('events/upload-image', {
-          method: 'POST',
-          body: formData,
-        });
-
-        if (res.imageUrl) {
-          setImageUrl(res.imageUrl);
-          showToast({ message: 'Изображение загружено', type: 'success' });
-        }
+        // Теперь мы просто сохраняем локальный путь к картинке
+        // Загрузка произойдет только в handleFinish
+        setImageUrl(result.assets[0].uri);
       }
     } catch (error: any) {
+      console.error('Pick image error:', error);
+      showToast({ message: 'Ошибка при выборе изображения', type: 'error' });
+    }
+  };
+
+  const uploadImageToServer = async (uri: string): Promise<string | null> => {
+    try {
+      const formData = new FormData();
+      let filename = uri.split('/').pop();
+
+      if (!filename || !filename.includes('.')) {
+        filename = `image_${Date.now()}.jpg`;
+      }
+
+      const match = /\.(\w+)$/.exec(filename);
+      const type = match ? `image/${match[1]}` : `image/jpeg`;
+
+      if (Platform.OS === 'web') {
+        const response = await fetch(uri);
+        const blob = await response.blob();
+        formData.append('image', blob, filename);
+      } else {
+        formData.append('image', {
+          uri: Platform.OS === 'android' ? uri : uri.replace('file://', ''),
+          name: filename,
+          type,
+        } as any);
+      }
+
+      // При редактировании передаем старый URL для удаления на сервере
+      if (editEvent && editEvent.image && editEvent.image.startsWith('http')) {
+        formData.append('oldImage', editEvent.image);
+      }
+
+      const res = await apiClient('events/upload-image', {
+        method: 'POST',
+        body: formData,
+      });
+
+      return res.imageUrl || null;
+    } catch (error) {
       console.error('Upload error:', error);
-      showToast({ message: 'Ошибка при загрузке изображения', type: 'error' });
-    } finally {
-      setIsUploading(false);
+      return null;
     }
   };
 
@@ -281,59 +282,76 @@ export default function CreateEventScreen() {
       return;
     }
 
-    const dateValidation = validateEventDate(selYear, selMonth, selDay);
-    if (!dateValidation.valid) {
-      showToast({
-        message: dateValidation.message || 'Некорректная дата',
-        type: 'error',
-      });
-      return;
-    }
-
-    const monthLabel = MONTHS.find(m => m.value === selMonth)?.label;
-    const dateString = `${selDay} ${monthLabel}, ${selYear}`;
-    const timeRangeString = `${startH}:${startM} — ${endH}:${endM}`;
-
-    const tsDate = new Date(
-      parseInt(selYear),
-      parseInt(selMonth),
-      parseInt(selDay),
-      parseInt(startH),
-      parseInt(startM)
-    );
-
-    if (isNaN(tsDate.getTime())) {
-      showToast({ message: 'Некорректная дата или время', type: 'error' });
-      return;
-    }
-
-    const sanitizedTitle = sanitizeText(title);
-    const sanitizedDescription = sanitizeText(description);
-    const sanitizedLocation = sanitizeText(location);
-
-    const eventData = {
-      ...(editEvent ? { id: editEvent.id } : {}),
-      organizerId: user.id!,
-      title: sanitizedTitle,
-      date: dateString,
-      timestamp: tsDate.getTime(),
-      location: `${sanitizedLocation}, ${district}`,
-      price: price === '0' || price === '' ? 'Бесплатно' : `${price}₸`,
-      priceValue: parseInt(price) || 0,
-      categories: [category.toLowerCase()],
-      vibe: vibe as any,
-      district,
-      ageLimit: parseInt(ageLimit) || 0,
-      tags: [category, vibe],
-      stats: editEvent ? editEvent.stats : 0,
-      image: imageUrl,
-      fullDescription: sanitizedDescription,
-      organizerName: sanitizeText(user.name || 'Организатор'),
-      organizerAvatar: user.avatarUrl || '',
-      timeRange: timeRangeString,
-    };
+    setIsUploading(true);
 
     try {
+      let finalImageUrl = imageUrl;
+
+      // Если imageUrl - это локальный путь (начинается не с http), значит надо загрузить
+      if (imageUrl && !imageUrl.startsWith('http')) {
+        const uploadedUrl = await uploadImageToServer(imageUrl);
+        if (!uploadedUrl) {
+          showToast({ message: 'Ошибка при загрузке изображения', type: 'error' });
+          setIsUploading(false);
+          return;
+        }
+        finalImageUrl = uploadedUrl;
+      }
+
+      const dateValidation = validateEventDate(selYear, selMonth, selDay);
+      if (!dateValidation.valid) {
+        showToast({
+          message: dateValidation.message || 'Некорректная дата',
+          type: 'error',
+        });
+        setIsUploading(false);
+        return;
+      }
+
+      const monthLabel = MONTHS.find(m => m.value === selMonth)?.label;
+      const dateString = `${selDay} ${monthLabel}, ${selYear}`;
+      const timeRangeString = `${startH}:${startM} — ${endH}:${endM}`;
+
+      const tsDate = new Date(
+        parseInt(selYear),
+        parseInt(selMonth),
+        parseInt(selDay),
+        parseInt(startH),
+        parseInt(startM)
+      );
+
+      if (isNaN(tsDate.getTime())) {
+        showToast({ message: 'Некорректная дата или время', type: 'error' });
+        setIsUploading(false);
+        return;
+      }
+
+      const sanitizedTitle = sanitizeText(title);
+      const sanitizedDescription = sanitizeText(description);
+      const sanitizedLocation = sanitizeText(location);
+
+      const eventData = {
+        ...(editEvent ? { id: editEvent.id } : {}),
+        organizerId: user.id!,
+        title: sanitizedTitle,
+        date: dateString,
+        timestamp: tsDate.getTime(),
+        location: `${sanitizedLocation}, ${district}`,
+        price: price === '0' || price === '' ? 'Бесплатно' : `${price}₸`,
+        priceValue: parseInt(price) || 0,
+        categories: [category.toLowerCase()],
+        vibe: vibe as any,
+        district,
+        ageLimit: parseInt(ageLimit) || 0,
+        tags: [category, vibe],
+        stats: editEvent ? editEvent.stats : 0,
+        image: finalImageUrl,
+        fullDescription: sanitizedDescription,
+        organizerName: sanitizeText(user.name || 'Организатор'),
+        organizerAvatar: user.avatarUrl || '',
+        timeRange: timeRangeString,
+      };
+
       if (editEvent) {
         await updateEvent(eventData as any);
         showToast({ message: 'Мероприятие обновлено', type: 'success' });
@@ -348,6 +366,8 @@ export default function CreateEventScreen() {
         message: error.message || 'Ошибка при сохранении события',
         type: 'error',
       });
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -411,9 +431,7 @@ export default function CreateEventScreen() {
                 onPress={pickImage}
                 disabled={isUploading}
               >
-                {isUploading ? (
-                  <ActivityIndicator color={colors.light.primary} size="large" />
-                ) : imageUrl ? (
+                {imageUrl ? (
                   <>
                     <Image source={{ uri: imageUrl }} style={styles.previewImage} />
                     <View style={styles.changeImageBadge}>
@@ -595,19 +613,36 @@ export default function CreateEventScreen() {
             <TouchableOpacity
               style={[styles.btnMain, step === 3 && styles.btnFinish]}
               onPress={step === 3 ? handleFinish : handleNext}
+              disabled={isUploading}
             >
-              <Text style={styles.btnMainText}>
-                {step === 3 ? (editEvent ? 'Сохранить' : 'Опубликовать') : 'Продолжить'}
-              </Text>
-              <Ionicons
-                name={step === 3 ? (editEvent ? 'save' : 'rocket') : 'chevron-forward'}
-                size={18}
-                color="#fff"
-              />
+              {isUploading ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <>
+                  <Text style={styles.btnMainText}>
+                    {step === 3
+                      ? editEvent
+                        ? 'Сохранить'
+                        : 'Опубликовать'
+                      : 'Продолжить'}
+                  </Text>
+                  <Ionicons
+                    name={
+                      step === 3 ? (editEvent ? 'save' : 'rocket') : 'chevron-forward'
+                    }
+                    size={18}
+                    color="#fff"
+                  />
+                </>
+              )}
             </TouchableOpacity>
 
             {step === 3 && editEvent && (
-              <TouchableOpacity style={styles.btnDelete} onPress={handleDelete}>
+              <TouchableOpacity
+                style={styles.btnDelete}
+                onPress={handleDelete}
+                disabled={isUploading}
+              >
                 <Text style={styles.btnDeleteText}>Удалить событие</Text>
                 <Ionicons name="trash-outline" size={18} color="#EF4444" />
               </TouchableOpacity>

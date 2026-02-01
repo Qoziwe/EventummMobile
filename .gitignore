@@ -1,76 +1,235 @@
-# ===============================
-# Dependencies
-# ===============================
-node_modules/
+# =================================
+# BACKEND (Python/Flask) Specific
+# =================================
 
-# ===============================
-# Expo
-# ===============================
-.expo/
-.expo-shared/
-web-build/
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+svelte/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
 
-# ===============================
-# React Native
-# ===============================
-ios/Pods/
-ios/build/
-android/.gradle/
-android/build/
-android/app/build/
+# Virtual Environment
+venv/
+ENV/
+env/
+*.venv
+venv*/
+env*/
 
-# Native configs generated locally
-*.keystore
-*.jks
+# Flask
+instance/
+.webassets-cache
 
-# ===============================
-# TypeScript
-# ===============================
-*.tsbuildinfo
+# Database
+*.db
+*.sqlite
+*.sqlite3
 
-# ===============================
 # Logs
-# ===============================
+*.log
+logs/
+
+# Uploads (но можно оставить пустую структуру)
+uploads/*         # игнорируем содержимое, но не папку
+!uploads/.gitkeep # если нужно сохранить пустую папку
+
+# =================================
+# FRONTEND (React Native/Expo) Specific
+# =================================
+
+# Dependencies
+node_modules/
+node_modules/**/*
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-pnpm-debug.log*
-expo-debug.log*
+yarn.lock
 
-# ===============================
-# Environment variables
-# ===============================
-.env
-.env.*
-!.env.example
+# Expo
+.expo/
+.expo-shared/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+web-build/
 
-# ===============================
-# OS / Editor
-# ===============================
-.DS_Store
-Thumbs.db
-
-# VS Code
-.vscode/*
-!.vscode/extensions.json
-!.vscode/settings.json
-
-# ===============================
-# Build / cache
-# ===============================
+# Builds
 dist/
 build/
-.cache/
-.tmp/
-.temp/
+*.apk
+*.aab
+*.ipa
 
-# ===============================
-# Testing
-# ===============================
+# Coverage
 coverage/
+*.lcov
 
-# ===============================
-# Misc
-# ===============================
-*.log
-EventumMobileFlaskBack/serviceAccountKey.json
+# Environment Variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# TypeScript cache
+*.tsbuildinfo
+
+# =================================
+# ОБЩИЕ ДЛЯ ВСЕХ ОС
+# =================================
+
+# Системные файлы macOS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+
+# Системные файлы Windows
+Thumbs.db
+desktop.ini
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# Системные файлы Linux
+.directory/
+.fuse_hidden*
+.dbus
+.Trash-*
+.nfs*
+
+# Временные файлы
+*.tmp
+*.temp
+*~
+*.swp
+*.swo
+*.swn
+
+# Кэш
+.cache/
+.cache/*
+*.cache
+
+# Локальные настройки
+.local/
+.localhistory/
+
+# Резервные копии
+*.bak
+*.backup
+*.old
+*.save
+
+# =================================
+# IDE и редакторы кода
+# =================================
+
+# Visual Studio Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+!.vscode/example.user.json
+*.code-workspace
+
+# JetBrains IDE (PyCharm, WebStorm, etc.)
+.idea/
+*.iml
+*.iws
+*.ipr
+.idea_modules/
+
+# Sublime Text
+*.sublime-*
+sublime-text*
+
+# Vim
+*.swp
+*.swo
+*~
+[._]*.s[a-w][a-z]
+[._]s[a-w][a-z]
+*.un~
+Session.vim
+.netrwhist
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# =================================
+# ПРОЕКТ-СПЕЦИФИЧНЫЕ
+# =================================
+
+# Локальные настройки базы данных
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+
+# Файлы сессий и куки
+*.session
+*.session.*
+
+# Тестовые данные
+test_data/
+test-output/
+*.test
+
+# Конфигурации разработчика
+local.config.*
+dev.config.*
+
+# =================================
+# ДОПОЛНИТЕЛЬНО ДЛЯ РАЗНЫХ ОС
+# =================================
+
+# Windows - игнорировать всё в корзине и временных папках
+[Tt]humbs.db
+[Tt]humbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+
+# Linux - скрытые системные файлы
+.history
+*~
+.fuse_hidden*
+
+# Общие временные файлы
+.tmp/
+temp/
+tmp/

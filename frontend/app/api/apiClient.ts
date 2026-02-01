@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const LOCAL_IP = '192.168.100.67';
+// 10.208.243.63
+const LOCAL_IP = '10.208.243.63';
 // const BACKEND_IP = '10.110.27.86'; // твой ZeroTier IP
 export const BASE_URL = `http://${LOCAL_IP}:5000/api`;
 // export const BASE_URL = `http://${BACKEND_IP}:5000/api`;

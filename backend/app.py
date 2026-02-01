@@ -521,6 +521,12 @@ def upload_avatar():
 def upload_event_image():
     if 'image' not in request.files: return jsonify({"error": "No file part"}), 400
     file = request.files['image']
+    
+    # ПРОВЕРЯЕМ, ПЕРЕДАН ЛИ URL СТАРОГО ИЗОБРАЖЕНИЯ ДЛЯ УДАЛЕНИЯ
+    old_image_url = request.form.get('oldImage')
+    if old_image_url:
+        delete_event_image(old_image_url)
+
     if file.filename == '': return jsonify({"error": "No selected file"}), 400
     if file and allowed_file(file.filename):
         user_id = get_jwt_identity()

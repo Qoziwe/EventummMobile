@@ -7,35 +7,35 @@ import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-cont
 import { StatusBar } from 'expo-status-bar';
 
 // Screens
-import HomeScreen from './screens/HomeScreen';
-import EventDetailScreen from './screens/EventDetailScreen';
-import ProfileScreen from './screens/ProfileScreen';
-import OrganizerProfileScreen from './screens/OrganizerProfileScreen';
-import EditProfileScreen from './screens/EditProfileScreen';
-import CreateEventScreen from './screens/CreateEventScreen';
-import CommunitiesScreen from './screens/DiscussionsScreen.tsx';
-import MyDiscussionsScreen from './screens/MyDiscussionsScreen'; // ИМПОРТ НОВОГО ЭКРАНА
-import SearchScreen from './screens/SearchScreen';
-import SettingsScreen from './screens/SettingsScreen';
-import PostThreadScreen from './screens/PostThreadScreen';
-import { SubscriptionsScreen } from './screens/SubscriptionScreen';
-import TicketDetailScreen from './screens/TicketDetailScreen';
-import AuthScreen from './screens/AuthScreen';
-import SavedEventsScreen from './screens/SavedEventsScreen';
-import FollowedOrganizersScreen from './screens/FollowedOrganizersScreen';
-import EditStudioScreen from './screens/EditStudioScreen';
-import AnalyticsScreen from './screens/AnalyticsScreen';
-import FinanceScreen from './screens/FinanceScreen';
-import CreateDiscussionScreen from './screens/CreateDiscussionScreen';
-import NotificationsScreen from './screens/NotificationsScreen'; // Added Import
+import HomeScreen from './app/screens/HomeScreen';
+import EventDetailScreen from './app/screens/EventDetailScreen';
+import ProfileScreen from './app/screens/ProfileScreen';
+import OrganizerProfileScreen from './app/screens/OrganizerProfileScreen';
+import EditProfileScreen from './app/screens/EditProfileScreen';
+import CreateEventScreen from './app/screens/CreateEventScreen';
+import CommunitiesScreen from './app/screens/DiscussionsScreen';
+import MyDiscussionsScreen from './app/screens/MyDiscussionsScreen'; // ИМПОРТ НОВОГО ЭКРАНА
+import SearchScreen from './app/screens/SearchScreen';
+import SettingsScreen from './app/screens/SettingsScreen';
+import PostThreadScreen from './app/screens/PostThreadScreen';
+import { SubscriptionsScreen } from './app/screens/SubscriptionScreen';
+import TicketDetailScreen from './app/screens/TicketDetailScreen';
+import AuthScreen from './app/screens/AuthScreen';
+import SavedEventsScreen from './app/screens/SavedEventsScreen';
+import FollowedOrganizersScreen from './app/screens/FollowedOrganizersScreen';
+import EditStudioScreen from './app/screens/EditStudioScreen';
+import AnalyticsScreen from './app/screens/AnalyticsScreen';
+import FinanceScreen from './app/screens/FinanceScreen';
+import CreateDiscussionScreen from './app/screens/CreateDiscussionScreen';
+import NotificationsScreen from './app/screens/NotificationsScreen'; // Added Import
 
 // Combined Toast System
-import { ToastProvider } from './components/ToastProvider';
+import { ToastProvider } from './app/components/ToastProvider';
 
 // Stores
-import { useUserStore } from './store/userStore';
-import { useEventStore } from './store/eventStore';
-import { useDiscussionStore } from './store/discussionStore';
+import { useUserStore } from './app/store/userStore';
+import { useEventStore } from './app/store/eventStore';
+import { useDiscussionStore } from './app/store/discussionStore';
 
 // Icons component
 import { Ionicons } from '@expo/vector-icons';
