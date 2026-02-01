@@ -14,11 +14,10 @@ import OrganizerProfileScreen from './app/screens/OrganizerProfileScreen';
 import EditProfileScreen from './app/screens/EditProfileScreen';
 import CreateEventScreen from './app/screens/CreateEventScreen';
 import CommunitiesScreen from './app/screens/DiscussionsScreen';
-import MyDiscussionsScreen from './app/screens/MyDiscussionsScreen'; // ИМПОРТ НОВОГО ЭКРАНА
+import MyDiscussionsScreen from './app/screens/MyDiscussionsScreen';
 import SearchScreen from './app/screens/SearchScreen';
 import SettingsScreen from './app/screens/SettingsScreen';
 import PostThreadScreen from './app/screens/PostThreadScreen';
-import { SubscriptionsScreen } from './app/screens/SubscriptionScreen';
 import TicketDetailScreen from './app/screens/TicketDetailScreen';
 import AuthScreen from './app/screens/AuthScreen';
 import SavedEventsScreen from './app/screens/SavedEventsScreen';
@@ -27,7 +26,7 @@ import EditStudioScreen from './app/screens/EditStudioScreen';
 import AnalyticsScreen from './app/screens/AnalyticsScreen';
 import FinanceScreen from './app/screens/FinanceScreen';
 import CreateDiscussionScreen from './app/screens/CreateDiscussionScreen';
-import NotificationsScreen from './app/screens/NotificationsScreen'; // Added Import
+import NotificationsScreen from './app/screens/NotificationsScreen';
 
 // Combined Toast System
 import { ToastProvider } from './app/components/ToastProvider';
@@ -46,20 +45,16 @@ const Tab = createBottomTabNavigator();
 // Кастомный BottomTabBar с правильной обработкой доступности
 function CustomTabBar(props: any) {
   return (
-    <View
-      importantForAccessibility="yes"
-      accessibilityElementsHidden={false}
-    >
+    <View importantForAccessibility="yes" accessibilityElementsHidden={false}>
       <BottomTabBar {...props} />
     </View>
   );
 }
 
 function TabNavigator() {
-  // Мы убрали локальный useSafeAreaInsets, так как теперь отступы обрабатываются глобально (снизу)
   return (
     <Tab.Navigator
-      tabBar={(props) => <CustomTabBar {...props} />}
+      tabBar={props => <CustomTabBar {...props} />}
       screenOptions={({ route }) => ({
         tabBarIcon: ({ focused, color, size }) => {
           let iconName: keyof typeof Ionicons.glyphMap;
@@ -83,7 +78,6 @@ function TabNavigator() {
         tabBarStyle: {
           backgroundColor: '#fff',
           borderTopColor: '#eee',
-          // Убираем дополнительный paddingBottom и height
           paddingBottom: 8,
           paddingTop: 8,
           height: 60,
@@ -118,7 +112,6 @@ function ProfileStackScreen() {
       <Stack.Screen name="ProfileMain" component={ProfileScreenWrapper} />
       <Stack.Screen name="EditProfile" component={EditProfileScreen} />
       <Stack.Screen name="Settings" component={SettingsScreen} />
-      <Stack.Screen name="Subscriptions" component={SubscriptionsScreen} />
       <Stack.Screen name="FollowedOrganizers" component={FollowedOrganizersScreen} />
       <Stack.Screen name="SavedEvents" component={SavedEventsScreen} />
       <Stack.Screen name="EditStudio" component={EditStudioScreen} />
@@ -137,7 +130,6 @@ function ProfileScreenWrapper() {
   return <ProfileScreen />;
 }
 
-// Создаем внутренний компонент для логики приложения, чтобы использовать хук useSafeAreaInsets
 function AppContent() {
   const insets = useSafeAreaInsets();
   const { isAuthenticated } = useUserStore();
@@ -145,10 +137,8 @@ function AppContent() {
   const fetchPosts = useDiscussionStore(state => state.fetchPosts);
   const fetchMyTickets = useUserStore(state => state.fetchMyTickets);
 
-  // Логика первичной загрузки данных из бэкенда Flask
   useEffect(() => {
     if (isAuthenticated) {
-      // Оборачиваем в try-catch на случай если бэкенд не запущен
       const loadInitialData = async () => {
         try {
           await Promise.all([fetchEvents(), fetchPosts(), fetchMyTickets()]);
@@ -164,7 +154,6 @@ function AppContent() {
     <View
       style={{
         flex: 1,
-        // Применяем отступы глобально, но НЕ сверху, чтобы не было белой полосы
         paddingBottom: insets.bottom,
         paddingLeft: insets.left,
         paddingRight: insets.right,

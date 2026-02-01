@@ -59,9 +59,7 @@ export default function ProfileScreen() {
     email,
     role,
     userType,
-    subscriptionStatus,
     interests,
-    stats,
     savedEventIds,
     purchasedTickets,
   } = user;
@@ -101,12 +99,6 @@ export default function ProfileScreen() {
   };
 
   const menuItems = [
-    {
-      id: 'subscriptions',
-      title: 'Подписки',
-      icon: 'card-outline',
-      screen: 'Subscriptions',
-    },
     ...(userType === 'explorer'
       ? [
           {
@@ -141,176 +133,173 @@ export default function ProfileScreen() {
     <View style={styles.fullContainer}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.light.background} />
 
-      <View 
+      <View
         accessibilityElementsHidden={showClearConfirm}
         importantForAccessibility={showClearConfirm ? 'no-hide-descendants' : 'yes'}
         style={{ flex: 1 }}
       >
         <Header title="Профиль" showBack={true} onBackPress={() => navigation.goBack()} />
 
-        <ScrollView 
-          style={styles.container} 
-          showsVerticalScrollIndicator={false}
-        >
-        <View style={styles.profileHeaderContainer}>
-          <View style={styles.topRow}>
-            <View style={styles.avatar}>
-              {avatarUrl ? (
-                <Image source={{ uri: avatarUrl }} style={styles.avatarImage} />
-              ) : (
-                <Text style={styles.avatarText}>{avatarInitials}</Text>
-              )}
-            </View>
-            <View style={styles.infoColumn}>
-              <View style={styles.nameRow}>
-                <Text style={styles.name}>{name}</Text>
-                {subscriptionStatus && subscriptionStatus !== 'none' && (
-                  <View style={styles.premiumBadge}>
-                    <Text style={styles.premiumText}>
-                      {subscriptionStatus.toUpperCase()}
-                    </Text>
-                  </View>
+        <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+          <View style={styles.profileHeaderContainer}>
+            <View style={styles.topRow}>
+              <View style={styles.avatar}>
+                {avatarUrl ? (
+                  <Image source={{ uri: avatarUrl }} style={styles.avatarImage} />
+                ) : (
+                  <Text style={styles.avatarText}>{avatarInitials}</Text>
                 )}
               </View>
-              <Text style={styles.email}>{email}</Text>
-              <Text style={styles.role}>{role}</Text>
-            </View>
-          </View>
-
-          <TouchableOpacity
-            style={styles.editButton}
-            onPress={() => navigation.navigate('EditProfile')}
-          >
-            <Text style={styles.editButtonText}>Редактировать профиль</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.statsGrid}>
-          <View style={styles.statCard}>
-            <Ionicons name="calendar-outline" size={20} color={colors.light.primary} />
-            <Text style={styles.statValue}>{purchasedTickets.length}</Text>
-            <Text style={styles.statLabel}>Билетов</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Ionicons name="bookmark-outline" size={20} color={colors.light.primary} />
-            <Text style={styles.statValue}>{savedEventIds.length}</Text>
-            <Text style={styles.statLabel}>Сохранено</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Ionicons name="chatbubbles-outline" size={20} color={colors.light.primary} />
-            <Text style={styles.statValue}>{discussionsCount}</Text>
-            <Text style={styles.statLabel}>Обсуждения</Text>
-          </View>
-        </View>
-
-        {userType === 'explorer' && (
-          <View style={styles.interestsSection}>
-            <Text style={styles.sectionHeaderTitle}>Интересы</Text>
-            <View style={styles.interestsContainer}>
-              {interests.map((interest, index) => (
-                <View key={index} style={styles.interestBadge}>
-                  <Text style={styles.interestText}>{interest}</Text>
+              <View style={styles.infoColumn}>
+                <View style={styles.nameRow}>
+                  <Text style={styles.name}>{name}</Text>
                 </View>
-              ))}
+                <Text style={styles.email}>{email}</Text>
+                <Text style={styles.role}>{role}</Text>
+              </View>
             </View>
-          </View>
-        )}
 
-        {userType !== 'organizer' && (
-          <View style={styles.creatorCard}>
-            <View style={styles.creatorContent}>
-              <View style={styles.creatorIcon}>
-                <Ionicons name="sparkles" size={18} color={colors.light.primary} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.creatorTitle}>
-                  Хотите создавать свои мероприятия?
-                </Text>
-                <Text style={styles.creatorDescription}>
-                  Станьте организатором и получите доступ к Studio
-                </Text>
-              </View>
-            </View>
             <TouchableOpacity
-              style={styles.creatorButton}
-              onPress={handleBecomeOrganizer}
+              style={styles.editButton}
+              onPress={() => navigation.navigate('EditProfile')}
             >
-              <Text style={styles.creatorButtonText}>Стать организатором</Text>
-              <Ionicons name="arrow-forward" size={16} color="#fff" />
+              <Text style={styles.editButtonText}>Редактировать профиль</Text>
             </TouchableOpacity>
           </View>
-        )}
 
-        <View style={styles.sectionsContainer}>
-          {menuItems.map(item => (
+          <View style={styles.statsGrid}>
+            <View style={styles.statCard}>
+              <Ionicons name="calendar-outline" size={20} color={colors.light.primary} />
+              <Text style={styles.statValue}>{purchasedTickets.length}</Text>
+              <Text style={styles.statLabel}>Билетов</Text>
+            </View>
+            <View style={styles.statCard}>
+              <Ionicons name="bookmark-outline" size={20} color={colors.light.primary} />
+              <Text style={styles.statValue}>{savedEventIds.length}</Text>
+              <Text style={styles.statLabel}>Сохранено</Text>
+            </View>
+            <View style={styles.statCard}>
+              <Ionicons
+                name="chatbubbles-outline"
+                size={20}
+                color={colors.light.primary}
+              />
+              <Text style={styles.statValue}>{discussionsCount}</Text>
+              <Text style={styles.statLabel}>Обсуждения</Text>
+            </View>
+          </View>
+
+          {userType === 'explorer' && (
+            <View style={styles.interestsSection}>
+              <Text style={styles.sectionHeaderTitle}>Интересы</Text>
+              <View style={styles.interestsContainer}>
+                {interests.map((interest, index) => (
+                  <View key={index} style={styles.interestBadge}>
+                    <Text style={styles.interestText}>{interest}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
+
+          {userType !== 'organizer' && (
+            <View style={styles.creatorCard}>
+              <View style={styles.creatorContent}>
+                <View style={styles.creatorIcon}>
+                  <Ionicons name="sparkles" size={18} color={colors.light.primary} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.creatorTitle}>
+                    Хотите создавать свои мероприятия?
+                  </Text>
+                  <Text style={styles.creatorDescription}>
+                    Станьте организатором и получите доступ к Studio
+                  </Text>
+                </View>
+              </View>
+              <TouchableOpacity
+                style={styles.creatorButton}
+                onPress={handleBecomeOrganizer}
+              >
+                <Text style={styles.creatorButtonText}>Стать организатором</Text>
+                <Ionicons name="arrow-forward" size={16} color="#fff" />
+              </TouchableOpacity>
+            </View>
+          )}
+
+          <View style={styles.sectionsContainer}>
+            {menuItems.map(item => (
+              <TouchableOpacity
+                key={item.id}
+                style={styles.sectionItem}
+                onPress={() => navigation.navigate(item.screen)}
+              >
+                <View style={styles.sectionIconContainer}>
+                  <Ionicons
+                    name={item.icon as any}
+                    size={20}
+                    color={colors.light.primary}
+                  />
+                </View>
+                <Text style={styles.menuItemText}>{item.title}</Text>
+                <Ionicons
+                  name="chevron-forward"
+                  size={16}
+                  color={colors.light.mutedForeground}
+                />
+              </TouchableOpacity>
+            ))}
             <TouchableOpacity
-              key={item.id}
-              style={styles.sectionItem}
-              onPress={() => navigation.navigate(item.screen)}
+              style={[styles.sectionItem, { borderBottomWidth: 0 }]}
+              onPress={handleLogout}
             >
               <View style={styles.sectionIconContainer}>
-                <Ionicons
-                  name={item.icon as any}
-                  size={20}
-                  color={colors.light.primary}
-                />
+                <Ionicons name="log-out-outline" size={20} color="#EF4444" />
               </View>
-              <Text style={styles.menuItemText}>{item.title}</Text>
-              <Ionicons
-                name="chevron-forward"
-                size={16}
-                color={colors.light.mutedForeground}
-              />
+              <Text style={[styles.menuItemText, { color: '#EF4444' }]}>
+                Выйти из аккаунта
+              </Text>
             </TouchableOpacity>
-          ))}
-          <TouchableOpacity
-            style={[styles.sectionItem, { borderBottomWidth: 0 }]}
-            onPress={handleLogout}
-          >
-            <View style={styles.sectionIconContainer}>
-              <Ionicons name="log-out-outline" size={20} color="#EF4444" />
-            </View>
-            <Text style={[styles.menuItemText, { color: '#EF4444' }]}>
-              Выйти из аккаунта
-            </Text>
-          </TouchableOpacity>
-        </View>
+          </View>
 
-        <View style={styles.tabsContainer}>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === 'tickets' && styles.tabActive]}
-            onPress={() => setActiveTab('tickets')}
-          >
-            <Text
-              style={[styles.tabText, activeTab === 'tickets' && styles.tabTextActive]}
+          <View style={styles.tabsContainer}>
+            <TouchableOpacity
+              style={[styles.tab, activeTab === 'tickets' && styles.tabActive]}
+              onPress={() => setActiveTab('tickets')}
             >
-              Мои билеты
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === 'favorites' && styles.tabActive]}
-            onPress={() => setActiveTab('favorites')}
-          >
-            <Text
-              style={[styles.tabText, activeTab === 'favorites' && styles.tabTextActive]}
+              <Text
+                style={[styles.tabText, activeTab === 'tickets' && styles.tabTextActive]}
+              >
+                Мои билеты
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.tab, activeTab === 'favorites' && styles.tabActive]}
+              onPress={() => setActiveTab('favorites')}
             >
-              Сохраненное
-            </Text>
+              <Text
+                style={[
+                  styles.tabText,
+                  activeTab === 'favorites' && styles.tabTextActive,
+                ]}
+              >
+                Сохраненное
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={{ paddingHorizontal: spacing.lg }}>
+            {activeTab === 'tickets' ? <TicketsList /> : <FavoritesList />}
+          </View>
+
+          <TouchableOpacity
+            onPress={() => setShowClearConfirm(true)}
+            style={styles.resetTrigger}
+          >
+            <Text style={styles.resetText}>v.1.0.4-production-reset</Text>
           </TouchableOpacity>
-        </View>
-
-        <View style={{ paddingHorizontal: spacing.lg }}>
-          {activeTab === 'tickets' ? <TicketsList /> : <FavoritesList />}
-        </View>
-
-        <TouchableOpacity
-          onPress={() => setShowClearConfirm(true)}
-          style={styles.resetTrigger}
-        >
-          <Text style={styles.resetText}>v.1.0.4-production-reset</Text>
-        </TouchableOpacity>
-        <View style={{ height: 40 }} />
-      </ScrollView>
+          <View style={{ height: 40 }} />
+        </ScrollView>
       </View>
 
       <Modal
@@ -321,14 +310,14 @@ export default function ProfileScreen() {
         accessibilityViewIsModal={true}
         presentationStyle="overFullScreen"
       >
-        <View 
-          style={styles.modalOverlay} 
+        <View
+          style={styles.modalOverlay}
           accessible={false}
           importantForAccessibility="yes"
           accessibilityElementsHidden={false}
         >
-          <View 
-            style={styles.confirmModalContent} 
+          <View
+            style={styles.confirmModalContent}
             accessibilityViewIsModal={true}
             importantForAccessibility="yes"
             accessible={true}
@@ -378,13 +367,6 @@ const styles = StyleSheet.create({
   infoColumn: { flex: 1 },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   name: { fontSize: 18, fontWeight: '700' },
-  premiumBadge: {
-    backgroundColor: colors.light.primary,
-    paddingHorizontal: 4,
-    paddingVertical: 1,
-    borderRadius: 4,
-  },
-  premiumText: { color: '#fff', fontSize: 9, fontWeight: '800' },
   email: { color: colors.light.mutedForeground, fontSize: 13, marginTop: 1 },
   role: { color: colors.light.mutedForeground, fontSize: 11 },
   editButton: {

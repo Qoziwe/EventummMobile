@@ -128,10 +128,16 @@ export default function PostThreadScreen() {
       />
 
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       >
-        <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          style={styles.container}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContentContainer}
+          automaticallyAdjustKeyboardInsets={true}
+        >
           <View style={styles.postSection}>
             <View style={styles.postHeader}>
               <View style={styles.authorBadge}>
@@ -261,6 +267,7 @@ const styles = StyleSheet.create({
   },
   backButtonText: { color: '#fff', fontWeight: '700' },
   container: { flex: 1 },
+  scrollContentContainer: { flexGrow: 1 },
   postSection: {
     padding: spacing.lg,
     backgroundColor: colors.light.card,

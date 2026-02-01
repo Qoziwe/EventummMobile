@@ -10,7 +10,7 @@ from werkzeug.utils import secure_filename
 app = Flask(__name__)
 app.url_map.strict_slashes = False
 
-# Разрешаем CORS для всех источников и настраиваем SocketIO
+# Разрешаем CORS
 CORS(app, resources={
     r"/*": {
         "origins": "*",
@@ -20,13 +20,13 @@ CORS(app, resources={
     }
 })
 
-# Инициализация SocketIO для работы в реальном времени
+# Инициализация SocketIO
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://backend_app:qoziwe@localhost/eventummobile'
-# app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///test.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['JWT_SECRET_KEY'] = 'qoziwe_secret_super_key' 
+# Увеличен ключ до 32+ байт, чтобы убрать InsecureKeyLengthWarning
+app.config['JWT_SECRET_KEY'] = 'qoziwe_secret_super_key_32_chars_long_safety' 
 
 # Настройка папок для загрузок
 UPLOAD_ROOT = 'uploads'
@@ -34,7 +34,6 @@ AVATARS_FOLDER = os.path.join(UPLOAD_ROOT, 'avatars')
 EVENTS_FOLDER = os.path.join(UPLOAD_ROOT, 'events')
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 
-# Создаем папки если их нет
 for folder in [UPLOAD_ROOT, AVATARS_FOLDER, EVENTS_FOLDER]:
     if not os.path.exists(folder):
         os.makedirs(folder)
@@ -46,7 +45,6 @@ app.config['EVENTS_FOLDER'] = EVENTS_FOLDER
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-# Вспомогательная функция для удаления аватара пользователя
 def delete_user_avatar(avatar_url):
     if not avatar_url:
         return
@@ -55,11 +53,9 @@ def delete_user_avatar(avatar_url):
         file_path = os.path.join(AVATARS_FOLDER, filename)
         if os.path.exists(file_path):
             os.remove(file_path)
-            print(f"Deleted avatar file: {file_path}")
-    except Exception as e:
-        print(f"Error deleting avatar file: {e}")
+    except Exception:
+        pass
 
-# Вспомогательная функция для удаления изображения события
 def delete_event_image(image_url):
     if not image_url:
         return
@@ -68,22 +64,20 @@ def delete_event_image(image_url):
         file_path = os.path.join(EVENTS_FOLDER, filename)
         if os.path.exists(file_path):
             os.remove(file_path)
-            print(f"Deleted event image file: {file_path}")
-    except Exception as e:
-        print(f"Error deleting event image file: {e}")
+    except Exception:
+        pass
 
 db.init_app(app)
 bcrypt.init_app(app)
 jwt = JWTManager(app)
 
-# --- Notification Model Definition (Adding here since I cannot edit models.py) ---
 class Notification(db.Model):
     __tablename__ = 'notifications'
     id = db.Column(db.String(50), primary_key=True)
     recipient_id = db.Column(db.String(50), db.ForeignKey('users.id'), nullable=False)
-    type = db.Column(db.String(20), nullable=False) # 'new_event', 'system'
+    type = db.Column(db.String(20), nullable=False) 
     content = db.Column(db.String(255), nullable=False)
-    related_id = db.Column(db.String(50), nullable=True) # ID события или сущности
+    related_id = db.Column(db.String(50), nullable=True)
     is_read = db.Column(db.Boolean, default=False)
     timestamp = db.Column(db.DateTime, default=datetime.datetime.utcnow)
 
@@ -130,14 +124,12 @@ def on_leave(data):
     room = str(data['postId'])
     leave_room(room)
 
-# Подключение к личной комнате пользователя для уведомлений
 @socketio.on('join_user_room')
 def on_join_user_room(data):
     user_id = str(data.get('userId'))
     if user_id:
         room = f"user_{user_id}"
         join_room(room)
-        print(f"User {user_id} joined room {room}")
 
 # --- ROUTES ---
 
@@ -168,7 +160,9 @@ def login():
 @app.route('/api/user/profile', methods=['PUT'])
 @jwt_required()
 def update_profile():
-    user_id = get_jwt_identity(); user = User.query.get(user_id); data = request.json
+    user_id = get_jwt_identity()
+    user = db.session.get(User, user_id)
+    data = request.json
     if 'name' in data: user.name = data['name']
     if 'username' in data:
         new_username = data['username'].strip().lower()
@@ -187,10 +181,12 @@ def update_profile():
 @app.route('/api/user/interests', methods=['POST'])
 @jwt_required()
 def update_interests():
-    user_id = get_jwt_identity(); user = User.query.get(user_id); interest_names = request.json.get('interests', [])
+    user_id = get_jwt_identity()
+    user = db.session.get(User, user_id)
+    interest_names = request.json.get('interests', [])
     user.interests = []
     for name in interest_names:
-        inst = Interest.query.get(name) or Interest(name=name)
+        inst = db.session.get(Interest, name) or Interest(name=name)
         if not db.session.object_session(inst): db.session.add(inst)
         user.interests.append(inst)
     db.session.commit()
@@ -200,7 +196,8 @@ def update_interests():
 @jwt_required()
 def toggle_favorite():
     user_id = get_jwt_identity(); event_id = request.json.get('eventId')
-    user = User.query.get(user_id); event = Event.query.get(event_id)
+    user = db.session.get(User, user_id)
+    event = db.session.get(Event, event_id)
     if event in user.saved_events: user.saved_events.remove(event)
     else: user.saved_events.append(event)
     db.session.commit()
@@ -211,29 +208,26 @@ def toggle_favorite():
 def become_organizer():
     try:
         user_id = get_jwt_identity()
-        user = User.query.get(user_id)
+        user = db.session.get(User, user_id)
         if not user:
             return jsonify({"error": "User not found"}), 404
-            
         user.user_type = 'organizer'
         db.session.commit()
         return jsonify(user_to_dict(user))
-    except Exception as e:
+    except Exception:
         db.session.rollback()
-        print(f"Error in become_organizer: {e}")
         return jsonify({"error": "Internal Server Error"}), 500
 
 @app.route('/api/user/follow', methods=['POST'])
 @jwt_required()
 def toggle_follow():
     user_id = get_jwt_identity(); target_id = request.json.get('organizerId')
-    user = User.query.get(user_id); target = User.query.get(target_id)
+    user = db.session.get(User, user_id)
+    target = db.session.get(User, target_id)
     if target in user.following: user.following.remove(target)
     else: user.following.append(target)
     db.session.commit()
     return jsonify({"followingOrganizerIds": [u.id for u in user.following]})
-
-# --- Notification Routes ---
 
 @app.route('/api/notifications', methods=['GET'])
 @jwt_required()
@@ -248,19 +242,14 @@ def mark_notifications_read():
     user_id = get_jwt_identity()
     data = request.json
     notif_id = data.get('notificationId')
-    
     if notif_id:
         notif = Notification.query.filter_by(id=notif_id, recipient_id=user_id).first()
         if notif:
             notif.is_read = True
     else:
-        # Mark all as read
         Notification.query.filter_by(recipient_id=user_id, is_read=False).update({Notification.is_read: True})
-    
     db.session.commit()
     return jsonify({"message": "Updated"})
-
-# --- Events Logic with Notifications ---
 
 @app.route('/api/events', methods=['GET', 'POST'])
 @jwt_required(optional=True)
@@ -268,11 +257,8 @@ def handle_events():
     if request.method == 'POST':
         user_id = get_jwt_identity()
         if not user_id: return jsonify({"error": "No auth"}), 401
-        
-        # Получаем текущего пользователя-организатора
-        organizer = User.query.get(user_id)
+        organizer = db.session.get(User, user_id)
         if not organizer: return jsonify({"error": "Organizer not found"}), 404
-
         data = request.json
         new_event = Event(
             title=data['title'], full_description=data.get('fullDescription', ''),
@@ -285,33 +271,15 @@ def handle_events():
             event_timestamp=data.get('timestamp', int(datetime.datetime.now().timestamp() * 1000))
         )
         db.session.add(new_event); db.session.commit()
-
-        # --- NOTIFICATION LOGIC (SocketIO only) ---
         followers = organizer.followers 
-        
         current_time = datetime.datetime.utcnow()
-        notification_title = "Новое событие!"
         notification_body = f"{organizer.name} создал(а): {new_event.title}"
-
         for follower in followers:
-            # 1. Save to DB
             notif_id = f"notif_{int(current_time.timestamp() * 1000)}_{follower.id}"
-            notif = Notification(
-                id=notif_id,
-                recipient_id=follower.id,
-                type='new_event',
-                content=notification_body,
-                related_id=str(new_event.id),
-                timestamp=current_time
-            )
+            notif = Notification(id=notif_id, recipient_id=follower.id, type='new_event', content=notification_body, related_id=str(new_event.id), timestamp=current_time)
             db.session.add(notif)
-            
-            # 2. Socket.IO (In-App)
             socketio.emit('new_notification', notif.to_dict(), room=f"user_{follower.id}")
-
         db.session.commit()
-        # --------------------------
-
         return jsonify({"id": new_event.id}), 201
     
     events = Event.query.all()
@@ -324,15 +292,11 @@ def handle_events():
         else:
             dt = e.added_at
             date_str = f"{dt.day} {months_ru[dt.month-1]}, {dt.hour:02d}:{dt.minute:02d}"
-        
-        # Получаем актуальные данные организатора из таблицы User
-        organizer = User.query.get(e.organizer_id)
+        organizer = db.session.get(User, e.organizer_id)
         current_avatar = organizer.avatar_url if organizer and organizer.avatar_url else e.organizer_avatar
-
         result.append({
             "id": e.id, "title": e.title, "fullDescription": e.full_description,
-            "organizerName": e.organizer_name, 
-            "organizerAvatar": current_avatar, # Используем актуальный аватар
+            "organizerName": e.organizer_name, "organizerAvatar": current_avatar,
             "timeRange": e.time_range, "organizerId": e.organizer_id, "vibe": e.vibe,
             "district": e.district, "ageLimit": e.age_limit, "tags": e.tags,
             "categories": e.categories, "priceValue": e.price_value, "location": e.location, 
@@ -345,52 +309,42 @@ def handle_events():
 @jwt_required()
 def handle_single_event(event_id):
     user_id = get_jwt_identity()
-    event = Event.query.get_or_404(event_id)
-    
-    if event.organizer_id != user_id: 
-        return jsonify({"error": "Forbidden"}), 403
-    
+    event = db.session.get(Event, event_id)
+    if not event: return jsonify({"error": "Not found"}), 404
+    if event.organizer_id != user_id: return jsonify({"error": "Forbidden"}), 403
     if request.method == 'PUT':
         data = request.json
         new_image = data.get('image')
         if new_image and new_image != event.image:
             delete_event_image(event.image)
-        
-        event.title = data.get('title', event.title)
-        event.full_description = data.get('fullDescription', event.full_description)
-        event.location = data.get('location', event.location)
-        event.district = data.get('district', event.district)
-        event.price_value = data.get('priceValue', event.price_value)
-        event.vibe = data.get('vibe', event.vibe)
-        event.age_limit = data.get('ageLimit', event.age_limit)
-        event.image = data.get('image', event.image)
-        event.categories = data.get('categories', event.categories)
-        event.tags = data.get('tags', event.tags)
-        event.event_timestamp = data.get('timestamp', event.event_timestamp)
-        event.time_range = data.get('timeRange', event.time_range)
-        
+        event.title = data.get('title', event.title); event.full_description = data.get('fullDescription', event.full_description)
+        event.location = data.get('location', event.location); event.district = data.get('district', event.district)
+        event.price_value = data.get('priceValue', event.price_value); event.vibe = data.get('vibe', event.vibe)
+        event.age_limit = data.get('ageLimit', event.age_limit); event.image = data.get('image', event.image)
+        event.categories = data.get('categories', event.categories); event.tags = data.get('tags', event.tags)
+        event.event_timestamp = data.get('timestamp', event.event_timestamp); event.time_range = data.get('timeRange', event.time_range)
         db.session.commit()
         return jsonify({"message": "Event updated"}), 200
-        
     if request.method == 'DELETE':
         delete_event_image(event.image)
         EventView.query.filter_by(event_id=event.id).delete()
         Ticket.query.filter_by(event_id=event.id).delete()
-        db.session.delete(event)
-        db.session.commit()
+        db.session.delete(event); db.session.commit()
         return jsonify({"message": "Event deleted"}), 200
 
 @app.route('/api/events/<event_id>/view', methods=['POST'])
 @jwt_required(optional=True)
 def increment_event_view(event_id):
     try:
-        event = Event.query.get_or_404(event_id); user_id = get_jwt_identity()
+        event = db.session.get(Event, event_id)
+        if not event: return jsonify({"error": "Not found"}), 404
+        user_id = get_jwt_identity()
         ip_address = request.remote_addr; user_agent = request.headers.get('User-Agent', '')
         if user_agent and ('bot' in user_agent.lower() or 'crawler' in user_agent.lower()):
             return jsonify({"views": event.views, "message": "Bot detected"}), 200
         last_minute = datetime.datetime.utcnow() - datetime.timedelta(minutes=1)
         recent_views_count = EventView.query.filter(EventView.ip_address == ip_address, EventView.viewed_at >= last_minute).count()
-        if recent_views_count > 10: return jsonify({"views": event.views, "message": "Rate limit exceeded"}), 429
+        if recent_views_count > 10: return jsonify({"views": event.views, "message": "Rate limit"}), 429
         if user_id:
             last_24h = datetime.datetime.utcnow() - datetime.timedelta(hours=24)
             recent_view = EventView.query.filter(EventView.event_id == event_id, EventView.user_id == user_id, EventView.viewed_at >= last_24h).first()
@@ -398,7 +352,6 @@ def increment_event_view(event_id):
                 db.session.add(EventView(event_id=event_id, user_id=user_id, ip_address=ip_address, user_agent=user_agent))
                 event.views += 1; db.session.commit()
                 return jsonify({"views": event.views, "message": "View counted"}), 200
-            else: return jsonify({"views": event.views, "message": "Already viewed recently"}), 200
         else:
             last_hour = datetime.datetime.utcnow() - datetime.timedelta(hours=1)
             recent_view = EventView.query.filter(EventView.event_id == event_id, EventView.ip_address == ip_address, EventView.viewed_at >= last_hour).first()
@@ -406,7 +359,7 @@ def increment_event_view(event_id):
                 db.session.add(EventView(event_id=event_id, user_id=None, ip_address=ip_address, user_agent=user_agent))
                 event.views += 1; db.session.commit()
                 return jsonify({"views": event.views, "message": "View counted (anon)"}), 200
-            else: return jsonify({"views": event.views, "message": "Already viewed recently (anon)"}), 200
+        return jsonify({"views": event.views, "message": "Already viewed"}), 200
     except Exception as e:
         db.session.rollback(); return jsonify({"error": str(e)}), 500
 
@@ -415,17 +368,10 @@ def increment_event_view(event_id):
 def handle_posts():
     if request.method == 'POST':
         user_id = get_jwt_identity()
-        user = User.query.get(user_id)
-        if not user: return jsonify({"error": "User not found or not authorized"}), 401
+        user = db.session.get(User, user_id)
+        if not user: return jsonify({"error": "User not found"}), 401
         data = request.json
-        new_post = Post(
-            category_slug=data.get('categorySlug'), 
-            category_name=data.get('categoryName'), 
-            author_id=user_id, 
-            author_name=user.name, 
-            content=data['content'], 
-            age_limit=data.get('ageLimit', 0)
-        )
+        new_post = Post(category_slug=data.get('categorySlug'), category_name=data.get('categoryName'), author_id=user_id, author_name=user.name, content=data['content'], age_limit=data.get('ageLimit', 0))
         db.session.add(new_post); db.session.commit()
         return jsonify({"id": new_post.id}), 201
     posts = Post.query.order_by(Post.timestamp.desc()).all()
@@ -435,7 +381,9 @@ def handle_posts():
 @jwt_required()
 def vote_post(post_id):
     user_id = get_jwt_identity(); data = request.json; vote_type = data.get('type')
-    post = Post.query.get_or_404(post_id); v = PostVote.query.filter_by(user_id=user_id, post_id=post_id).first()
+    post = db.session.get(Post, post_id)
+    if not post: return jsonify({"error": "Post not found"}), 404
+    v = PostVote.query.filter_by(user_id=user_id, post_id=post_id).first()
     if v:
         if v.vote_type == 'up': post.upvotes -= 1
         else: post.downvotes -= 1
@@ -449,26 +397,17 @@ def vote_post(post_id):
         if vote_type == 'up': post.upvotes += 1
         else: post.downvotes += 1
     db.session.commit()
-    socketio.emit('vote_update', {
-        "postId": post_id,
-        "upvotes": post.upvotes,
-        "downvotes": post.downvotes,
-        "votedUsers": {v.user_id: v.vote_type for v in post.votes}
-    }, room=str(post_id))
+    socketio.emit('vote_update', {"postId": post_id, "upvotes": post.upvotes, "downvotes": post.downvotes, "votedUsers": {v.user_id: v.vote_type for v in post.votes}}, room=str(post_id))
     return jsonify({"upvotes": post.upvotes, "downvotes": post.downvotes}), 200
 
 @app.route('/api/posts/<post_id>/comments', methods=['GET', 'POST'])
 @jwt_required(optional=True)
 def handle_comments(post_id):
     if request.method == 'POST':
-        user_id = get_jwt_identity(); user = User.query.get(user_id); data = request.json
+        user_id = get_jwt_identity(); user = db.session.get(User, user_id); data = request.json
         c = Comment(post_id=post_id, author_id=user_id, author_name=user.name, content=data['content'], parent_id=data.get('parentId'), depth=data.get('depth', 0))
         db.session.add(c); db.session.commit()
-        comment_dict = {
-            "id": c.id, "postId": c.post_id, "authorId": c.author_id, "authorName": c.author_name, 
-            "timestamp": c.timestamp.isoformat(), "content": c.content, "parentId": c.parent_id, 
-            "depth": c.depth, "upvotes": c.upvotes, "downvotes": c.downvotes
-        }
+        comment_dict = {"id": c.id, "postId": c.post_id, "authorId": c.author_id, "authorName": c.author_name, "timestamp": c.timestamp.isoformat(), "content": c.content, "parentId": c.parent_id, "depth": c.depth, "upvotes": c.upvotes, "downvotes": c.downvotes}
         socketio.emit('new_comment', comment_dict, room=str(post_id))
         return jsonify(comment_dict), 201
     comms = Comment.query.filter_by(post_id=post_id).all()
@@ -488,8 +427,6 @@ def get_my_tickets():
     uid = get_jwt_identity(); tickets = Ticket.query.filter_by(user_id=uid).all()
     return jsonify([{"id": t.id, "eventId": t.event_id, "quantity": t.quantity, "purchaseDate": t.purchase_date.isoformat(), "eventTitle": t.event.title if t.event else "Unknown"} for t in tickets])
 
-# --- ФАЙЛОВЫЕ ОПЕРАЦИИ ---
-
 @app.route('/uploads/avatars/<path:filename>')
 def uploaded_avatar(filename):
     return send_from_directory(AVATARS_FOLDER, filename)
@@ -501,41 +438,30 @@ def uploaded_event_image(filename):
 @app.route('/api/user/upload-avatar', methods=['POST'])
 @jwt_required()
 def upload_avatar():
-    if 'avatar' not in request.files: return jsonify({"error": "No file part"}), 400
+    if 'avatar' not in request.files: return jsonify({"error": "No file"}), 400
     file = request.files['avatar']
-    if file.filename == '': return jsonify({"error": "No selected file"}), 400
-    if file and allowed_file(file.filename):
-        user_id = get_jwt_identity(); user = User.query.get(user_id)
-        if user.avatar_url:
-            delete_user_avatar(user.avatar_url)
-        ts = int(datetime.datetime.now().timestamp())
-        filename = secure_filename(f"user_{user_id}_{ts}_{file.filename}")
-        file.save(os.path.join(AVATARS_FOLDER, filename))
-        user.avatar_url = f"{request.host_url.rstrip('/')}/uploads/avatars/{filename}"
-        db.session.commit()
-        return jsonify({"avatarUrl": user.avatar_url}), 200
-    return jsonify({"error": "File type not allowed"}), 400
+    if file.filename == '' or not allowed_file(file.filename): return jsonify({"error": "Invalid file"}), 400
+    user_id = get_jwt_identity(); user = db.session.get(User, user_id)
+    if user.avatar_url: delete_user_avatar(user.avatar_url)
+    ts = int(datetime.datetime.now().timestamp())
+    filename = secure_filename(f"user_{user_id}_{ts}_{file.filename}")
+    file.save(os.path.join(AVATARS_FOLDER, filename))
+    user.avatar_url = f"{request.host_url.rstrip('/')}/uploads/avatars/{filename}"
+    db.session.commit()
+    return jsonify({"avatarUrl": user.avatar_url}), 200
 
 @app.route('/api/events/upload-image', methods=['POST'])
 @jwt_required()
 def upload_event_image():
-    if 'image' not in request.files: return jsonify({"error": "No file part"}), 400
+    if 'image' not in request.files: return jsonify({"error": "No file"}), 400
     file = request.files['image']
-    
-    # ПРОВЕРЯЕМ, ПЕРЕДАН ЛИ URL СТАРОГО ИЗОБРАЖЕНИЯ ДЛЯ УДАЛЕНИЯ
     old_image_url = request.form.get('oldImage')
-    if old_image_url:
-        delete_event_image(old_image_url)
-
-    if file.filename == '': return jsonify({"error": "No selected file"}), 400
-    if file and allowed_file(file.filename):
-        user_id = get_jwt_identity()
-        ts = int(datetime.datetime.now().timestamp())
-        filename = secure_filename(f"event_{user_id}_{ts}_{file.filename}")
-        file.save(os.path.join(EVENTS_FOLDER, filename))
-        img_url = f"{request.host_url.rstrip('/')}/uploads/events/{filename}"
-        return jsonify({"imageUrl": img_url}), 200
-    return jsonify({"error": "Invalid type"}), 400
+    if old_image_url: delete_event_image(old_image_url)
+    if file.filename == '' or not allowed_file(file.filename): return jsonify({"error": "Invalid file"}), 400
+    user_id = get_jwt_identity(); ts = int(datetime.datetime.now().timestamp())
+    filename = secure_filename(f"event_{user_id}_{ts}_{file.filename}")
+    file.save(os.path.join(EVENTS_FOLDER, filename))
+    return jsonify({"imageUrl": f"{request.host_url.rstrip('/')}/uploads/events/{filename}"}), 200
 
 if __name__ == '__main__':
     with app.app_context(): db.create_all()

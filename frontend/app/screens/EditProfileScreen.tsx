@@ -307,13 +307,13 @@ export default function EditProfileScreen() {
         accessibilityViewIsModal={true}
         presentationStyle="overFullScreen"
       >
-        <View 
+        <View
           style={styles.modalRoot}
           accessible={false}
           importantForAccessibility="yes"
           accessibilityElementsHidden={false}
         >
-          <Animated.View 
+          <Animated.View
             style={[styles.modalBackdrop, { opacity: backdropOpacity }]}
             accessible={false}
           >
@@ -421,6 +421,12 @@ export default function EditProfileScreen() {
     );
   };
 
+  const isPhoneInvalid = !!(
+    formData.phone &&
+    formData.phone.length > 0 &&
+    !validatePhone(formData.phone)
+  );
+
   return (
     <View style={styles.fullContainer}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.light.background} />
@@ -519,13 +525,7 @@ export default function EditProfileScreen() {
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Телефон</Text>
               <TextInput
-                style={[
-                  styles.input,
-                  formData.phone &&
-                    formData.phone.length > 0 &&
-                    !validatePhone(formData.phone) &&
-                    styles.inputError,
-                ]}
+                style={[styles.input, isPhoneInvalid && styles.inputError]}
                 value={formData.phone}
                 onChangeText={handlePhoneChange}
                 placeholder="+7 (___) ___-__-__"
@@ -533,11 +533,9 @@ export default function EditProfileScreen() {
                 maxLength={18}
                 placeholderTextColor={colors.light.mutedForeground}
               />
-              {formData.phone &&
-                formData.phone.length > 0 &&
-                !validatePhone(formData.phone) && (
-                  <Text style={styles.errorText}>Некорректный формат телефона</Text>
-                )}
+              {isPhoneInvalid ? (
+                <Text style={styles.errorText}>Некорректный формат телефона</Text>
+              ) : null}
             </View>
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Город</Text>
@@ -593,14 +591,14 @@ export default function EditProfileScreen() {
         accessibilityViewIsModal={true}
         presentationStyle="overFullScreen"
       >
-        <View 
-          style={styles.modalOverlay} 
+        <View
+          style={styles.modalOverlay}
           accessible={false}
           importantForAccessibility="yes"
           accessibilityElementsHidden={false}
         >
-          <View 
-            style={styles.deleteModalContent} 
+          <View
+            style={styles.deleteModalContent}
             accessibilityViewIsModal={true}
             importantForAccessibility="yes"
             accessible={true}

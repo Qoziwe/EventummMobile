@@ -114,10 +114,16 @@ export default function CreateDiscussionScreen() {
       </View>
 
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       >
-        <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          style={styles.container}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContentContainer}
+          automaticallyAdjustKeyboardInsets={true}
+        >
           <View style={styles.scrollContent}>
             <Text style={styles.label}>Возрастное ограничение</Text>
             <View style={styles.ageContainer}>
@@ -233,6 +239,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     borderBottomWidth: 1,
     borderBottomColor: colors.light.border,
+    zIndex: 10,
   },
   headerBtn: { width: 40, height: 40, justifyContent: 'center' },
   headerTitle: { fontSize: 18, fontWeight: '700', color: colors.light.foreground },
@@ -248,6 +255,7 @@ const styles = StyleSheet.create({
   publishBtnDisabled: { opacity: 0.5 },
   publishBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
   container: { flex: 1 },
+  scrollContentContainer: { flexGrow: 1 },
   scrollContent: { padding: spacing.lg },
   label: {
     fontSize: 12,
