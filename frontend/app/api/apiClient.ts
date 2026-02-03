@@ -1,9 +1,13 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// 10.208.243.63
-const LOCAL_IP = '192.168.100.67';
+// 10.208.243.63 - линукс
+// 192.168.100.67 - комп винда
+// 192.168.100.39 - термукс андроид
+// https://empirical-workshops-edmonton-fitting.trycloudflare.com - Термукс андроид через клаудфлейр HTTPS запрос
+export const BASE_URL = 'https://encouragingly-checkable-judy.ngrok-free.dev/api'; // для клаудфлейр
+// const LOCAL_IP = '192.168.100.39';
 // const BACKEND_IP = '10.110.27.86'; // твой ZeroTier IP
-export const BASE_URL = `http://${LOCAL_IP}:5000/api`;
+// export const BASE_URL = `http://${LOCAL_IP}:5000/api`;
 // export const BASE_URL = `http://${BACKEND_IP}:5000/api`;
 
 const abortControllers = new Map<string, AbortController>();
